@@ -1,0 +1,161 @@
+---
+title: "EDA_Biathlon"
+author: "Diego Uchendu"
+date: "09/05/2020"
+output: html_document
+---
+# Task
+
+Compose a report with a descriptive analysis of the data. Investigate which variables affect the skiing speed of the athletes. Use basic statistics as well as appropriate plots to illustrate the effects of environmental conditions or course profiles on skiing speed. 
+
+# Read data 
+
+At first read the data set into the workspace either via the console or the "import dataset" dialog in environment menu (right upper pane). 
+Extract data
+```{r, proj-1, echo=TRUE, warning=TRUE, collapse=TRUE}
+dat <- read.csv("exercise_case_study/biathlon_results_women.csv")
+str(dat)
+```
+
+## Data Types
+$ Factors: 11$,$int: 4$, $num: 9$ 
+
+
+```{r, proj-1, echo=TRUE, warning=TRUE, collapse=TRUE}
+summary(dat)
+```
+
+#Date and Season
+
+```{r}
+?qplot
+ggplot2::qplot(data=dat, x=season)
+```
+
+
+```{r, proj-1, echo=TRUE, warning=TRUE, collapse=TRUE}
+library(ggplot2)
+ggplot2::ggplot(aes(x=date,y=season),data=dat)+geom_point()
+```
+
+As seen above, there we can use season and date are correlated.
+#Season vs date
+Check for unique values
+```{r, proj-1, echo=TRUE, warning=TRUE, collapse=TRUE}
+length(unique(dat$date)) #254 unique dates 
+length(unique(dat$season))#10 unique season
+```
+
+
+
+
+
+
+
+```{r}
+library(dplyr)
+season_data <- function(){
+  dat%>%
+    group_by(season)%>%
+    arrange(season)
+}
+ggplot(aes(x=season,y=speed),data=season_data())+geom_line()
+
+```
+
+
+#Speed vs age
+```{r, proj-1, echo=TRUE, warning=TRUE, collapse=TRUE}
+
+speed_age <- function(){
+  dat%>%
+    group_by(speed)%>%
+    summarise(age_mean=round(mean(age)),
+            age_median=round(median(age)),
+            n=n())%>%
+    arrange(speed)
+}
+ggplot(aes(x=age_mean,y=speed),data=speed_age())+geom_line()
+```
+
+As seen in the above graph, the prime speed is between 22 and 38 years.
+
+```{r}
+rank_data <- function(){
+  cor.test(dat$rank,dat$speed)
+  cor.test(dat$course.rank,dat$speed)
+  qplot(dat$rank,dat$speed)
+}
+```
+The lower the ranking(increase from 1 till end), the lower the speed.
+Faster people are ranked higher, thus negative correlation
+
+#country vs speed
+```{r}
+country_data <-function(){
+  dat%>%
+    group_by(nation)%>%
+    summarise(speed_mean=mean(speed),
+            speed_median=mean(speed))%>%
+    arrange(speed_mean)
+    
+   
+}
+country_data()
+```
+```{r}
+ggplot(aes(x=nation,y=speed_mean),data=country_data())+geom_point()
+```
+
+#snow.condition
+```{r}
+snow.condition_data <-function(){
+  dat%>%
+    group_by(snow.conditions)%>%
+    summarise(speed_mean=mean(speed),
+            speed_median=mean(speed))%>%
+    arrange(speed_mean)
+    
+   
+}
+snow.condition_data()
+```
+Some of the data appears values in snow.conditions appeared more than one times.
+we can use mutate method in dyplr to mearge the values
+
+
+```{r}
+ggplot(aes(x=snow.conditions,y=speed),data=dat)+geom_point()
+```
+Using plotly to plot side by side
+```{r}
+#snow.temperature
+#install.packages("plotly")
+#library(plotly)
+#?lm
+#fig.1 <-plot_ly(x=~snow.temperature,y=~speed, data=dat, color = ~snow.conditions)
+
+snow.condition_data <-function(){
+  ggplot(data=dat,mapping=aes(x=snow.temperature,y=speed),color=
+         snow.conditions)+geom_point(mapping=aes(color=air.temperature))+geom_smooth(method = "lm")
+                                       
+                            
+   
+}
+snow.condition_data()
+```
+As seen from the data above, Increase in temperature results to increase in speed but also variability also increases. also higher air temperature has positive correlation with high snow temperature.
+#Weather condition, speed, age
+```{r}
+weather_age_speed <- function(){
+  ggplot(data=dat, aes(x=age,y=speed))+geom_point(aes(color= air.temperature))+ geom_smooth(method = "lm")+facet_wrap(~weather.conditions)+labs(x="age",y="Speed")
+}
+weather_age_speed()
+```
+with wind & rain, 
+
+#Correlation
+```{r}
+cor(dat[,c("snow.temperature","air.temperature","fails.total","age","speed","rank","course.rank","elevation","max.climb", "tot.time","total.climb","course.time")])
+```
+
