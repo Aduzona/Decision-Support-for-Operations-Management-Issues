@@ -1,0 +1,168 @@
+---
+title: "5. Plotting"
+author: "Diego Uchendu"
+date: "10/05/2020"
+output: html_document
+---
+#5.1 Basic plotting routines
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Very simple scatter plot
+```{r}
+n <- 50 #number of points to plot
+x <- rnorm(n)#random density distribution function for normal distribution
+y <- rnorm(n) #independent y coordinates
+plot(x,y, xlab = "x", ylab="y")# xlab and ylab define axis labels
+```
+
+#a still simple data set
+
+
+
+```{r}
+n <- 50 #number of points to plot
+x <- rnorm(n,10,2)# mean=10 std=2 
+y <- 2*x + rnorm(n,0,sqrt(x)) #linearly dependent y coordinates with heteroscedastic errors
+
+?par
+par(mfrow =c(1,2))#set up a device with 2 plots
+
+?plot
+#"p" for points,"l" for lines, "b" for both,
+
+plot(x,y, xlab ="x",ylab = "y", type = "l", main ="unstructured" ) # one can also plot lines and a title
+#order arranges indexes according to there values ascending or descending order.
+#x[order(x)]
+plot(x[order(x)],y[order(x)],xlab = "x",ylab = "y",type = "b", main = "structured")# as well as points and lines
+?lm#fitting linear regression models
+lin.reg <-lm(y~x)
+abline(lin.reg,col="red",lwd=2)# and plot the regression line
+mtext(text = paste("est. regression: ", round(lin.reg$coefficients[1],1), "+", round(lin.reg$coefficients[2],1), "*x", sep = ""), side = 3) # and add the formula as text
+```
+
+## Exercise 1:
+Sample 100 observations in the range [−3,3] from the following model and plot the sample:
+$y=sin(3*x^2-4)*x+0.5+ϵ$ 
+whereby $ϵ ~ N(0,0.5)$ Can you estimate a regression function?
+
+runif(n,min=-3,max=3) random uniform distribution
+```{r}
+n<- 100 #number of points to plot
+x <- runif(n,min = -3, max=3) #100 x coordinates
+y <- sin(3*x^2 -4)*x + 0.5* x + rnorm(n,mean = 0,sd=sqrt(.5))
+?plot
+#pch is plot character 0 to 20 is black color,
+#pch 24 is triangle
+plot(x[order(x)], y[order(x)], xlab = "x", ylab = "y", pch=20)
+lin.reg <- lm(y~x) #fit a linear regression model
+abline(lin.reg,col="red",lwd=2)# ... and plot the regression line
+```
+
+#plot a normal distribution
+```{r}
+man.norm <- function(x,mu=0,sigma=1)1/sqrt(2 * pi * sigma^2) * exp(-(x-mu)^2/2/sigma^2)     # density function normal distribution, self-written, default to standard normal
+n <- 100
+x <- seq(-3,3, length.out = n)# set plotting range (-3,3) and sample n equally spaced points
+y <- man.norm(x) #calculate density at x-values
+par(mfrow=c(1,2)) #set up a device with 2 plots
+plot(x,y, xlab = "x", ylab = "density", type ="l", main = "stand. normal density (self-written)")  
+curve(dnorm, from = -3, to= 3, main="stand. normal density (built-in)")
+```
+##Exercise 2: 
+Plot the EOQ model in an appropriate range.
+#EOQ function
+```{r}
+#cost function
+cost_eoq_fun <- function(q, d, co, cl) {
+  # returns total cost per period
+  # d...demand
+  # q...lot size
+  # co...ordering cost
+  # cl...stock holding cost
+  ((1/2)*cl*q)+((d/q)*co)
+}
+
+#economic ordering quantity function
+eoq_fun <- function(co, d, cl) {
+  # return optimal lot size
+  # d...demand
+  # co...ordering cost
+  # cl...stock holding cost
+  sqrt((2*co*d)/cl)
+}
+
+
+
+```
+#plotting
+```{r}
+q.vec<- seq(265, 365, length.out = 100) #quantity vector setting plotting range for x axis
+y.vec <- cost_eoq_fun(q=q.vec,d=100, cl=.1,co= 50)#the  EOQ function
+
+
+#abline adds 1 or more straight lines on the current plot
+?plot.new()
+
+#line type (lty) can be specified using either text (“blank”, “solid”, “dashed”, “dotted”, “dotdash”, “longdash”, “twodash”) or number (0, 1, 2, 3, 4, 5, 6). Note that lty = “solid” is identical to lty=1.
+
+#lwd is line width 
+plot(q.vec, y.vec, xlab = "lot size q", ylab = "total cost", type = "l",lwd=2)+ abline(v= eoq_fun(d=100, cl=.1, co=50), col="darkgrey",lwd=2,lty=2)
+
+
+
+```
+In the above plot EOQ is at the grey line.
+##Exercise 3:
+Plot the newsvendor model in an appropriate range
+The total cost in the normal newsvendor model is given by
+$Z(q)= (c_u + c_o)\times σ \times(φ(q')+q'\times Φ (q'))-c_u \times(q-U)$
+with $q' =\frac{(q-μ)}σ$
+
+dnorm= density normal distribution
+pnorm= normal distribution function 
+```{r}
+newsven_obj_fun <- function(x, cu,co,mu,sigma){
+  q.prime <- (x-mu)/sigma
+         (cu + co) * sigma * (dnorm(q.prime) + q.prime * pnorm(q.prime)) - cu * sigma * q.prime
+
+}
+q.vec <- seq(110, 125, length.out = 100) # x axis
+cost.vec <- newsven_obj_fun(x=q.vec, mu = 100, cu=2, co= 0.5, sigma = 20) #yaxis
+
+plot(q.vec, cost.vec, xlab ="lot size q", ylab = "total cost", type = "l", lwd = 2)
+
+```
+
+#overlay  different plots.
+```{r}
+#plot a normal distribution
+n <- 50 #sample size
+x <- rnorm(n) #sample from standard normal distribution
+est.mu<- mean(x) #estimate mean
+est.sd <- sd(x)  #estimate standard deviation
+
+#plot histogram with density (default plots frequencies), specify plot range explicitely
+hist(x, freq = FALSE,ylim = c(0,0.5),xlim = c(-3,3),main= paste("Histogram of x, sample size =", n) )
+
+
+#add theoretical density
+#add=TRUE means add to already existing plot
+curve(dnorm,from = -3, to = 3, col="red")
+
+#add estimated density
+{curve(1/sqrt(2 * pi * est.sd^2) * exp(-(x - est.mu)^2/2/est.sd^2), from = -3, to = 3, col = "blue", add = TRUE) 
+legend("topleft" , bty="n", col=c("blue","red"), lwd =c(1,1), legend = c("estimated density", "theoretical density"))}
+#topleft is position of the legend
+```
+##Exercise 4:
+Plot the EOQ model in an appropriate range and add holding cost function and ordering cost function in different colors. Add a legend to the plot.
+```{r}
+q.vec <- seq(265, 365, length.out = 100)
+y.vec <- cost_eoq_fun(q = q.vec , d = 100, cl = .1, co = 50)
+{plot(q.vec, y.vec, xlab ="lot size q", ylab = "total cost", type = "l", lwd =2, ylim=c(12,max(y.vec)))+abline(v = eoq_fun(d = 100, cl = .1, co = 50), col="darkgrey", lwd=2, lty=2)+lines(x=q.vec, y=(1/2)*.1*q.vec, lwd=2, col="blue")+lines(x=q.vec, y=(100/q.vec)*50, lwd=2, col="red")
+legend("topleft", lty = c(1,1,1,2), col = c("black","red","blue","darkgrey"), legend = c("total cost", "ordering cost", "storage cost", "optimal lot size"), bty="n" )}
+```
+#Exercise 5:
+
+$c_{set}^{sup}$
