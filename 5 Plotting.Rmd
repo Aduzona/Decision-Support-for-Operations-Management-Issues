@@ -164,5 +164,41 @@ y.vec <- cost_eoq_fun(q = q.vec , d = 100, cl = .1, co = 50)
 legend("topleft", lty = c(1,1,1,2), col = c("black","red","blue","darkgrey"), legend = c("total cost", "ordering cost", "storage cost", "optimal lot size"), bty="n" )}
 ```
 #Exercise 5:
+Consider the in the joint economic lot size model. Supplier and customer face setup costs 
+$(c_{set}^{sup},c_{set}^{cust})$ as well as stock-holding cost rates $(c_{sh}^{sup},c_{sh}^{cust})$ The demand rate of the customers is λ and production rate of the supplier is μ (with λ < μ). The cost functions of supplier and customer are:
+$C^{cust}(q) =\frac{λ}{q}\times c_{set}^{cust} + c_{sh}^{cust}\times \frac{q}{2}$
+and
+$C^{supp}(q) =\frac{λ}{q}\times c_{set}^{sup} + c_{sh}^{sup}\times \frac{q}{2}\times \frac{λ}{μ}$
+Plot the cost functions of supplier, customer, and the SC (i.e., total cost function) in different colors. Add a legend to the plot.
 
-$c_{set}^{sup}$
+#which.min= index of the first minimum of numeric or logical vector
+```{r}
+jel_func <- function(q, c.supp.set, c.supp.sh, c.cust.set, c.cust.sh, lambda, mu){
+  #costs in joint exonomic lot sizing model
+  if(lambda > mu) stop("infeasible(lambda > mu)")#check feasibility
+  c.cust <- lambda/q * c.cust.set + c.cust.sh * q/2
+  c.supp <-  lambda/q * c.supp.set  + c.supp.sh * q/2 * lambda/mu
+  c.sc <- c.supp + c.cust
+  return(data.frame(cost.customer = c.cust, cost.supplier = c.supp, cost.sc = c.sc))
+}
+
+q.vec <- seq(50,200, length.out = 100)#x_axis
+is.vector(q.vec)# this is a vector thats is columnwise also its an independent variable
+y.df <- jel_func(q = q.vec, c.supp.set = 240, c.supp.sh = 4, c.cust.set = 100, c.cust.sh = 5, lambda = 100, mu = 160)
+
+{plot(x=q.vec, y.df$cost.sc, xlab = "lot_size q",ylab = "costs",type = "l",lwd=2,ylim = range(y.df))+
+  lines(x = q.vec, y = y.df$cost.customer, lwd = 2, col = "blue")+
+  lines(x = q.vec, y = y.df$cost.supplier, lwd = 2, col = "red")+
+  abline(v=q.vec[which.min(y.df$cost.customer)],col="blue",lwd=1, lty=2)+
+  abline(v = q.vec[which.min(y.df$cost.supplier)], col = "red", lwd = 1, lty = 2)+
+  abline(v = q.vec[which.min(y.df$cost.sc)], col = "darkgrey", lwd = 1, lty = 2)
+  
+legend("top", lty = c(1,1,1,2), col = c("black","red","blue","darkgrey"), legend = c("SC", "supplier", "customer", "opt. q"),bty = "n",horiz = T)}
+
+```
+Overlays are also useful when plots should be customized.
+```{r}
+#plot a normal distribution with annotation
+n<- 1000 #set number
+```
+
