@@ -1,6 +1,6 @@
 ---
 title: "EDA_Biathlon.Rmd"
-author: "Diego Uchendu"
+author: "Group_B"
 date: "10/05/2020"
 output: html_document
 ---

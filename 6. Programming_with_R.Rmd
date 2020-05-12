@@ -1,0 +1,187 @@
+---
+title: "Programming with R"
+author: "Diego Uchendu"
+date: "12/05/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 6.1 apply, sapply & co
+
+apply(x,MARGIN,FUN), x type is matrix , comment: MARGIN controls whether columns or rows of x are passed to FUN
+```{r}
+m1 <- matrix(1:10, ncol=2)
+?apply
+#for a matrix 1 indicates rows, 2 indicates columns, c(1, 2) indicates rows and columns.
+apply(m1,1,function(x) max(x)) #maximum in each row
+apply(m1,1, max)
+apply(m1, 2, function(x) diff(range(x)))#range in each column
+```
+Apply functions are useful but typically slow., built in functions are much faster.
+
+## Buitin function
+
+```{r}
+x <- matrix(1:10^6,ncol=10)
+#returns cpu and time the expression used
+system.time(apply(x, 1, sum))  # using apply
+system.time(rowSums(x)) #using buitin function
+```
+
+
+#using lapply and sapply
+lapply(x,FUN), type: vector and list, comment: each component is passed FUN, always returns a list
+sapply(x,FUN), type: vector and list, comment: same as lapply but simplifies results as far as possible e.g a vector
+```{r}
+l1 <- list(matrix(sample(1:100, 25),ncol = 5), matrix(sample(1:100, 36),ncol = 6),matrix(sample(1:100, 16),ncol = 4))
+lapply(l1, diag) #returns diagonal elements
+sapply(l1, diag)#sapply cannot simplify much
+sapply(l1,function(x) sum(diag(x))) # now sapply returns a vector
+```
+#mapply
+mapply(FUN,...) x type: multiple, comment: multiple entries(typically vectors) whose entries  are passed to FUN.
+```{r}
+weig.mh.dist <- function(a, x, y, u = 0, v = 0) a * (abs(x - u) + abs(y - v) ) # claculates the weighted Manhattan distance from (x,y) to (u,v) 
+
+# note that u and v have default value 0 --> thus they don't need to be specified
+weig.mh.dist(a=10,x=1,y=1)
+weig.mh.dist(a = 10, x = 1, y = 1, u = 1, v = 1)  # but they can be specified
+
+n<- 10             # set a number of points/customers
+a.vec <- sample(1:100,size = n) # sample waights for each point/customer
+x.vec <- rnorm(n)  #sample x coordinates
+y.vec <- rnorm(n)  #sample y coordinates
+mapply(weig.mh.dist, a.vec,x.vec, y.vec) #distance to (0,0)
+mapply(weig.mh.dist, a.vec, x.vec, y.vec, u = 1, v = 1) # distances to (1,1), u and v are passed to weig.mh.dist
+```
+# Exercise 1:
+Try to rearrange the data objects a.vec, x.vec, and y.vec such that apply can be used to calculate all distances.
+
+As noted before, apply-functions are slow. So, before using them, try whether your function can be vectorized using vectorize() or by passing vectors directly.
+```{r}
+weig.mh.dist <- function(a, x, y, u = 0, v = 0){
+  a * (abs(x - u) + abs(y - v) )
+} 
+weig.mh.dist.vec <-Vectorize(weig.mh.dist)
+#x <- list(a.vec,x.vec,y.vec,u,v)
+#as.vector(x)
+#weig.mh.dist.vec(as.vector(x))
+
+a.vec
+x.vec
+y.vec
+u <- 1
+v <- 1
+u <-rep(u,n)
+v <-rep(v,n)
+mean(mat.mh)
+
+mat.mh <-cbind(a.vec,x.vec,y.vec,u,v)
+mat.mh
+is.matrix(mat.mh)
+system.time(apply(mat.mh,1, weig.mh.dist.vec))
+```
+
+
+```{r}
+v.weigh.mh.dist <- Vectorize(weig.mh.dist, c("a","x","y")) # vectorize arguments a, x, and y
+
+n <- 10^6   # set large number of points/customers
+a.vec <- sample(1:100, size = n, replace = T)# sample weights for each point/customer
+x.vec <- rnorm(n)                   # sample x coordinates
+y.vec <- rnorm(n)                   # sample y coordinates
+system.time(mapply(weig.mh.dist,a.vec,x.vec,y.vec))#slow
+system.time(v.weigh.mh.dist(a.vec, x.vec, y.vec)) #a bit faster
+
+system.time(weig.mh.dist(a.vec, x.vec, y.vec)) #awesomely fast
+```
+# 6.2 tapply & aggregate
+These allow for passing groups of data to a function.
+```{r}
+y <- c(rnorm(10,0,1),runif(10,0,1),rnorm(10,1,1),runif(10,0,2)) # some normally and uniformly dist. samples
+x1 <- rep(c("norm", "unif","norm","unif"),each=10) # distribution groups
+x2 <- rep(c("base","ext."), each=20) #setting groups
+
+tapply(X=y,INDEX = list(x1,x2),FUN = mean)# means of sample per group
+```
+
+When groups are defined to categorize variables, typically data frames are constructed. In this case, aggregate can be used to by specifying a formula. A formula is constructed as follows: <dependent var.> ~ <group var. 1> + <group var. 2>. Note that formulas are generally used to model functional dependencies between variables, see here for an introduction.
+```{r}
+# usually a data frame/tibble is constructed
+library(tibble)
+tb1 <- tibble(y, distr = x1,set=x2) #create a tibble/dataframe
+aggregate(formula=y ~ distr + set, data=tb1, FUN = mean) #same means of sample per group as before
+```
+# 6.3 loops & co.
+# for-loops
+```{r}
+# recall the weighted Manhattan distance function used before
+# now, we iteratively simulate the setting introduced above
+
+n <- 10^6        # number of trials
+u <- 0; v <- 0    # current location
+res.vec <- NULL   # result vector
+
+system.time(for (i in 1:n) {
+  a <- sample(1:100, size = 1, replace = T) # sample weight for current point/customer
+  x <- rnorm(1) #sample x coordinate
+  y <- rnorm(1) #sample y coordinate
+  res.vec[i] <- a *(abs(x-u)+abs(y-v)) #save Manhattan distance
+})
+
+# compare with results before
+
+# loop representing when scalar is passed
+   #user  system elapsed 
+  #22.64    0.09   23.48 
+
+#Vector is parsed very fast
+  # user  system elapsed 
+  # 0.00    0.00    0.02
+  
+# vectors of all kinds can be used to iterate over
+
+n <- 100
+iter.vec <- rep(c(T,F), times=n)# generate Logical vector to iterate over
+res.vec <- NULL  #result vector
+j <- 1      #index for result vector
+
+system.time(
+for (i in iter.vec) { #i is now logical
+  if(i){ # if i is TRUE ...
+    res.vec <- c(res.vec,j^2) #append squared j to result vector...
+    j <- j+1   #an increase j by 1
+  }else {
+    j <- 2*j     #otherwise double j
+  }
+  
+}
+)
+```
+
+
+
+# Exercise 2: 
+Try to fasten the code by initializing all data objects in the necessary size in advance.
+```{r}
+n <- 100
+iter.vec <- rep(c(T,F), times=n)# generate Logical vector to iterate over
+length(iter.vec)
+res.vec <- NULL  #result vector
+j <- 1      #index for result vector
+
+system.time(
+for (i in iter.vec) { #i is now logical
+  if(i){ # if i is TRUE ...
+    res.vec <- c(res.vec,j^2) #append squared j to result vector...
+    j <- j+1   #an increase j by 1
+  }else {
+    j <- 2*j     #otherwise double j
+  }
+  
+}
+)
+```
