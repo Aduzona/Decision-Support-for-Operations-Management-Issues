@@ -17,20 +17,20 @@ $$min_{(u,v)\in R^2} \Rightarrow \sum_{i\in \zeta} a_i \times \sqrt{(x_i -u)^2+(
 
 ```{r}
 loc.Eucl <- function(loc, a,x,y) sum(a * sqrt((x-loc[1])^2+ (y-loc[2])^2))
-
+n <- 100
 a.vec <- sample(1:100, size = n)    # sample weights for each point/customer
 x.vec <- rnorm(n)                   # sample x coordinates
 y.vec <- rnorm(n)                   # sample y coordinates
 
-res <- optim(par = c(0,0), fn = loc.mh, method = "BFGS", a = a.vec, x = x.vec , y= y.vec)
+res <- optim(par = c(0,0), fn = loc.Eucl, method = "BFGS", a = a.vec, x = x.vec , y= y.vec)
 res
 ```
 
 Substitute optimium location and values in objective function.
 ```{r}
 #using optimum location That is the minimized points
-loc= c(-0.21717086,-0.03399783) #(u,v)
-loc.mh(loc, a.vec,x.vec,y.vec) # value 8028.396
+loc= c(-0.1776144,-0.1328299) #(u,v)
+loc.Eucl(loc, a.vec,x.vec,y.vec) # value 6450.412
 ```
 
 # plotting Steiner Model
