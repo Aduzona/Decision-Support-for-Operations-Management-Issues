@@ -1,0 +1,96 @@
+---
+title: "7. Exercise_Optimization_in_R"
+author: "Diego Uchendu"
+date: "16/05/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+##Exercise 1: 
+Formulate the Steiner-Weber model with Euclidean distance and solve it with optim()
+
+$$min_{(u,v)\in R^2} \Rightarrow \sum_{i\in \zeta} a_i \times \sqrt{(x_i -u)^2+(y_i-v)^2}$$
+
+```{r}
+loc.Eucl <- function(loc, a,x,y) sum(a * sqrt((x-loc[1])^2+ (y-loc[2])^2))
+
+a.vec <- sample(1:100, size = n)    # sample weights for each point/customer
+x.vec <- rnorm(n)                   # sample x coordinates
+y.vec <- rnorm(n)                   # sample y coordinates
+
+res <- optim(par = c(0,0), fn = loc.mh, method = "BFGS", a = a.vec, x = x.vec , y= y.vec)
+res
+```
+
+Substitute optimium location and values in objective function.
+```{r}
+#using optimum location That is the minimized points
+loc= c(-0.21717086,-0.03399783) #(u,v)
+loc.mh(loc, a.vec,x.vec,y.vec) # value 8028.396
+```
+
+# plotting Steiner Model
+
+```{r}
+library(grDevices)        # package for generating color gradients
+# generate grid of potential locations
+emat <- expand.grid(seq(-3,3, length.out = 100), seq(-3,3, length.out = 100))
+# list with grid point coordinates 
+plist <- list(x = seq(-3,3, length.out = 100), y = seq(-3,3, length.out = 100))
+# evaluate objective function at each potential location
+z.vec <- apply(emat, 1, function(x) loc.Eucl(x, a = a.vec, x = x.vec, y = y.vec))
+# generate color vector --> assigns a color between green and red depending on the objective value
+col.vec <- colorRamp(c("green","orange","red"))( (z.vec-min(z.vec))/(max(z.vec)) )
+# recode color vector to RGB code
+col.vec <- rgb(col.vec[,1],col.vec[,2],col.vec[,3], maxColorValue = 255)
+# create plot
+par(mar =c(4,4,0.3,0.3))
+plot(emat, xlim=c(-3,3), ylim=c(-3,3), xlab="x", ylab="y", col = col.vec, pch = 15, asp = 1, xaxs = "i", yaxs = "i", cex = 1.5)
+points(x.vec, y.vec, pch =20 , cex = log(a.vec)/2)
+points(rbind(res$par,res$par), pch =17 , cex = 2, col="blue")
+contour(plist, z= matrix(z.vec, ncol=100) , add= TRUE)
+legend("topleft", bty="n", legend=c("customer","center"), col=c("black","blue"), pch = c(20,17), bg = "yellow", cex = 1.5)
+```
+
+## Exercise 2:
+
+Formulate the Newsvendor model and use optim() to find the optimal order quantity. Compare the optimal solution found by optim() with the theoretical optimum.
+
+The total cost in the normal newsvendor model is given by
+$$Z(q)= (c_u + c_o)\times σ \times(φ(q')+q'\times Φ (q'))-c_u \times(q-\mu)$$
+with $$q' =\frac{(q-μ)}σ$$ 
+Find q while minimizing z
+$Z(q)$ =  total cost 
+$q$ = order quantity 
+$cu$ = Underage cost, cost of losing profit.
+$co$ = Overage cost, cost of over ordering.
+$\mu$= Mean demand
+```{r}
+newsven_obj_fun <- function(x, cu,co,mu,sigma){
+  q.prime <- (x-mu)/sigma
+         (cu + co) * sigma * (dnorm(q.prime) + q.prime * pnorm(q.prime)) - cu * sigma * q.prime
+
+}
+#n <- 100
+#q.vec <- seq(110, 125, length.out = n) # x axis
+#cost.vec <- newsven_obj_fun(x=q.vec, mu = 100, cu=2, co= 0.5, sigma = 20) #yaxis
+?optim
+min.cost.vec<-optim(par = 1,fn=newsven_obj_fun, "BFGS",mu = 100, cu=2, co= 0.5, sigma = 20 )
+
+min.cost.vec
+```
+
+# Exercise 3:
+
+Add an inventory capacity constrint to the Wagner-Whitin model and resolve it with Rglpk.
+
+
+$$l_t -M\cdot y_t+q_t \le capacity$$ 
+M= sum of demand
+```{r}
+
+```

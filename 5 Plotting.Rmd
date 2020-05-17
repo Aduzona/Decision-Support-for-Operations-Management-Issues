@@ -118,8 +118,8 @@ In the above plot EOQ is at the grey line.
 ## Exercise 3:
 Plot the newsvendor model in an appropriate range
 The total cost in the normal newsvendor model is given by
-$Z(q)= (c_u + c_o)\times σ \times(φ(q')+q'\times Φ (q'))-c_u \times(q-U)$
-with $q' =\frac{(q-μ)}σ$
+$$Z(q)= (c_u + c_o)\times σ \times(φ(q')+q'\times Φ (q'))-c_u \times(q-\mu)$$
+with $$q' =\frac{(q-μ)}σ$$
 
 dnorm= density normal distribution
 pnorm= normal distribution function 
