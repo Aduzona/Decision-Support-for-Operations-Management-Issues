@@ -1,0 +1,88 @@
+---
+title: "cooredinated_ordering2"
+author: "Diego Uchendu"
+date: "30/05/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Coordinated Ordering
+
+1. Deterministic/continous Demand: The same amount of demand is there every instance of time and demand are met at every instance of time, thus no time varying demand
+
+2. Instantaneous replenishment: As soon as you place an order,  the item arrives. Lead time= 0
+
+3. No shortage: As soon as stock level on Y axis reaches 0, place an order for another quantity q. thus instanstaneous replenishment. 
+
+In the data set "Data_ordering.xlsx" parts are represented by material ID column.
+$i=$denotes part
+$i \in \mathcal I \qquad \{i_1,i_2,...,i_{62}\}$
+$d_i=$ demand per day for part $i$
+$c_i^{or}=$ ordering cost for part $i$
+
+$c_i^{sh}=$ stock holding cost rate based on unit price $p_i$ and interest rate $h$.
+$c_i^{sh}=p_i \cdot h$
+
+calculate EOQ for each part i:
+$$ q_i^* = \sqrt \frac {2 \cdot d_i \cdot c_i^{or}} {c_i^{sh}}$$
+$\frac {d_i}{q_i}=$ no of orders per day for part $i$
+$\frac {q_i}{2}=$ average inventory for part $i$
+$$ min \rightarrow (c_i^{or} \cdot \sum_{i=1}^{n=62} \frac {d_i}{q_i}) + (h \cdot \sum_{i=1}^{n=62} \frac {q_i}{2}\cdot p_i ) $$
+
+
+```{r}
+library(kableExtra)
+library(knitr)
+df <- data.frame(Cat = c("box 1i", "box 2i"), 
+                 part_j1 = linebreak(c("yes", "no")), 
+                 part_j2 = linebreak(c("yes", "no")),
+                 part_j3=linebreak(c("no","yes")),
+                 part_jn= linebreak(c("no", "yes")))
+kable(df, col.names = c("boxID vs MatID", "part_j1", "part_j2","part_j3","part_jn"), escape = F, caption = "parts each boxes can contain") %>%
+  kable_styling(latex_options = "hold_position")
+```
+$b_{i}=$capacity of a box for part $i$ given in pieces
+$b_{j}=$ Size of box $j$
+$$b_{j}= box_{length} \times box_{width} \times box_{height}$$
+Assuming $q_i=50$ for part $i$ and $b_i=45$ then number of boxes ordered is $\frac {q_i}{b_i}= \frac {50}{45}=1.1=1$ because only complete boxes can be ordered
+
+#Optimum Ordering constraint
+$$\frac {q_i}{b_i}=Number \space boxes \space ordered  \\ 
+\frac {d_i}{b_i}=Number \space boxes \space demanded \\
+T= \frac {q_i}{d_i}=TimeCycle$$
+Optimum ordering constaint
+$$\frac {q_i}{b_i} - \frac {d_i}{b_i} \cdot T \le 0$$
+
+$$\frac {q_i}{b_i} \cdot b_{ji} \le rack_{length} $$
+Sum of number of parts i is equal to box size for part i.
+
+$rack_{cap}= rack_{length} \times rack_{width} \times rack_{height}$ in cubic mm
+
+
+
+
+
+$$\sum_{i=1}^n \frac {q_i}{2} \cdot b_j = 8 \cdot rack_{cap}$$
+$S_{bi}=$ space required to store each box with part i
+
+item
+$\sum part_i = boxcap_i$
+
+Sum of Inventory 
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
