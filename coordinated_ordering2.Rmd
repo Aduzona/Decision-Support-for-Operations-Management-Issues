@@ -19,18 +19,18 @@ knitr::opts_chunk$set(echo = TRUE)
 
 In the data set "Data_ordering.xlsx" parts are represented by material ID column.
 $i=$denotes part
-$i \in \mathcal I \qquad \{i_1,i_2,...,i_{62}\}$
-$d_i=$ demand per day for part $i$
-$c_i^{or}=$ ordering cost for part $i$
+$i \in \mathcal I \qquad \{i_1,i_2,...,i_{62}\}, \space$
+$d_i=$ demand per day for part $i, \space$
+$c_i^{or}=$ ordering cost for part $i ,\space$
 
-$c_i^{sh}=$ stock holding cost rate based on unit price $p_i$ and interest rate $h$.
+$c_i^{sh}=$ stock holding cost rate based on unit price $p_i$ and interest rate $h, \qquad$.
 $c_i^{sh}=p_i \cdot h$
 
 calculate EOQ for each part i:
-$$ q_i^* = \sqrt \frac {2 \cdot d_i \cdot (c_i^{or}+c^{-or})} {c_i^{sh}}$$
-$\frac {d_i}{q_i}=$ no of orders per day for part $i$
+$$ q_i^* = \sqrt \frac {2 \cdot d_i \cdot (c_i^{or}+c^{-or})} {p_i \cdot h}$$
+$\frac {d_i}{q_i}=$ no of orders per day for part $i, \qquad$
 $\frac {q_i}{2}=$ average inventory for part $i$
-$$ min \rightarrow ((c_i^{or}+c^{-or}) \cdot \sum_{i=1}^{n=62} \frac {d_i}{q_i}) + (h \cdot \sum_{i=1}^{n=62} \frac {q_i}{2}\cdot p_i ) $$
+$$ min \rightarrow (c_i^{-or}+ \sum_{i=1}^{n=62} \frac {d_i}{q_i} \cdot c_i^{or}) + (h \cdot \sum_{i=1}^{n=62} \frac {q_i}{2}\cdot p_i ) $$
 
 
 ```{r}
@@ -49,21 +49,23 @@ $b_{j}=$ Size of box $j$
 $$b_{j}= box_{length} \times box_{width} \times box_{height}$$
 Assuming $q_i=50$ for part $i$ and $b_i=45$ then number of boxes ordered is $\frac {q_i}{b_i}= \frac {50}{45}=1.1=1$ because only complete boxes can be ordered
 
-#Optimum Ordering constraint
+# Optimum Ordering constraint
+
 $$x_i=\frac {q_i}{b_i}=Number \space boxes \space ordered  \\ 
 \frac {d_i}{b_i}=Number \space boxes \space demanded \\
-T= \frac {q_i}{d_i}=TimeCycle$$
-Optimum ordering constaint
+T= \frac {q_i}{d_i}=TimeCycle$$   
+Constraint:
 $$\frac {q_i}{b_i} - \frac {d_i}{b_i} \cdot T \le 0$$
 # Rack Length or one runway constraint
+
 $n_k=$Number of boxes in a runway $k$ with box ID $j$ for part $i\\$:
 E.g: box ID 3103147 has a width of 198 but Rack length is 6000,
-maximum number of box 3103147 in runway is $n_k= \frac {6000}{198}=30.30=30 boxes\\$
+maximum number of box 3103147 in runway is $n_k= \frac {6000}{198}=30.30=30 \space boxes\\$
 
 $$ n_{k}=\frac {rack_{length}}{b_{ji\space length}} \\ $$
 $x_{i}=$ lets say that there are 720 boxes with id 3103147 containing part i Mat ID(7346592+72), the first 30 boxes are assigned to runway $k_1 \qquad$ 
 
-$x_{ik}=$ number of boxes ordered for part $i$ in runway $k \qquad$ $b_{ji\space length}$ is the length of box id $j$ containing part $i\\$
+$x_{ik}=$ number of boxes ordered for part $i$ in runway $k, \qquad$ $b_{ji\space length}$ is the length of box id $j$ containing part $i,\space \\$
 $x_{ik}= \frac {q_{ik}}{b_{ik}} \\$
 
 
@@ -74,7 +76,7 @@ Collapsing Rack 4 levels in a rack and joining the 8 racks to become 1 level.
 
 Total rack width available: 
 $rack_{total_{Width}}=rack_{width} \times 4 \times 8\\$
-Sum of number of parts i is equal to box size for part i.
+Sum of number of parts $i$ is equal to box size for part $i$.
 
 $$\sum_{k \in \mathcal K } x_{kj} \cdot b_{ji\space width} \le rack_{total_{Width}}$$
 
