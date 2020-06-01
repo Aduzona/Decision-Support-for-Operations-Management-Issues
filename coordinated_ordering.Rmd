@@ -51,7 +51,15 @@ $$ \sum_{i=1}^n P_i = b_i \qquad b_i=box \space capacity\space for \space part \
 For $blen_j$:
 1. In each runway, only one part should be stored
 $$rw_j=b_i$$
+Note: there are 4 levels and 8 racks
 
+$rack_{cap}= rack_{length} \times rack_{width} \times 4  \times 8$ in cubic mm
+
+
+
+
+
+$$\sum_{i=1}^n \frac {q_i}{2} \cdot b_j = rack_{cap}$$
 ```{r}
 
 ```
