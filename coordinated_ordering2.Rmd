@@ -40,7 +40,7 @@ $\frac {q_i}{2}=$ average inventory for part $i$
 
 Note: In row 5 $MateiralID \rightarrow$7305673+76 has 16 pieces  in a box and row 8 $MateiralID->$7305819+79 has 6 pieces in a box , both has same $boxID \rightarrow$6203059 with $c_i^{or}= 80 €$
 
-$$ min \rightarrow (c^{-or} \cdot \sum_{i=1}^{n=62} \frac {de_i}{q_i} \cdot c_i^{or}) + (h \cdot \sum_{i=1}^{n=62} \frac {q_i}{2}\cdot pr_i ) $$
+$$ min \rightarrow (\sum_{i=1}^{n=62}c^{-or} + \sum_{i=1}^{n=62} \frac {de_i}{q_i} \cdot c_i^{or}) + (h \cdot \sum_{i=1}^{n=62} \frac {q_i}{2}\cdot pr_i ) $$
 
 
 ```{r}
@@ -78,7 +78,7 @@ $x_{i}=$ lets say that there are 720 boxes with id 3103147 containing part i Mat
 $q_{ik}=$ number of boxes ordered for part $i$ in runway $k, \qquad$ $b_{ji\space length}$ is the length of box id $j$ containing part $i,\space \\$
 
 
-$$\sum_{i \in \mathcal I } q_{ik} \cdot b_{ji\space length} \le n_{k} \qquad \forall k \in \mathcal K $$
+$$\sum_{i \in \mathcal I } q_{ik} \cdot b_{ji\space length} \le rack_{length} \qquad \forall k \in \mathcal K $$
 # Rack Width
 
 Collapsing Rack 4 levels in a rack and joining the 8 racks to become 1 level.
@@ -87,7 +87,7 @@ Total rack width available:
 $rack_{total_{Width}}=(rack_{width} \times 4 \times 8) \rightarrow$
 Sum of number of parts $i$ is equal to box size for part $i$.
 
-$$\sum_{k \in \mathcal K } q_{kj} \cdot b_{ji\space width} \le rack_{total_{Width}}$$
+$$\sum_{k \in \mathcal K } q_{km} \cdot b_{ji\space width} \le rack_{total_{Width}}$$
 
 
 ## Joint Ordering(JO)
