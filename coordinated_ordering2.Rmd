@@ -21,16 +21,26 @@ In the data set "Data_ordering.xlsx" parts are represented by material ID column
 $i=$denotes part
 $i \in \mathcal I \qquad \{i_1,i_2,...,i_{62}\}, \space$
 $d_i=$ demand per day for part $i, \space$
+
+Convert demand $d_i$, quantity $q_i$ and unit price$p_i$ all from part $i$ to box $bi$ which is the capacity of a box for part $i$ 
+
+$de_i=\frac {d_i}{b_i} \rightarrow$ Demand for box with part $i$
+$\mathcal pr_i= b_i \cdot p_i \rightarrow$ Price for box with material $i$
+
 $c_i^{or}=$ ordering cost for part $i ,\space$
 
 $c_i^{sh}=$ stock holding cost rate based on unit price $p_i$ and interest rate $h, \qquad$.
 $c_i^{sh}=p_i \cdot h$
 
+## Separate Ordering (SO)
 calculate EOQ for each part i:
-$$ q_i^* = \sqrt \frac {2 \cdot d_i \cdot (c_i^{or}+c^{-or})} {p_i \cdot h}$$
-$\frac {d_i}{q_i}=$ no of orders per day for part $i, \qquad$
+$$ q_i^* = \sqrt \frac {2 \cdot de_i \cdot (c_i^{or}+c^{-or})} {pr_i \cdot h}$$
+$\frac {d_i}{q_i}=$ no of orders for part $i, \qquad$
 $\frac {q_i}{2}=$ average inventory for part $i$
-$$ min \rightarrow (c_i^{-or}+ \sum_{i=1}^{n=62} \frac {d_i}{q_i} \cdot c_i^{or}) + (h \cdot \sum_{i=1}^{n=62} \frac {q_i}{2}\cdot p_i ) $$
+
+Note: In row 5 $MateiralID \rightarrow$7305673+76 has 16 pieces  in a box and row 8 $MateiralID->$7305819+79 has 6 pieces in a box , both has same $boxID \rightarrow$6203059 with $c_i^{or}= 80 €$
+
+$$ min \rightarrow (c^{-or} \cdot \sum_{i=1}^{n=62} \frac {de_i}{q_i} \cdot c_i^{or}) + (h \cdot \sum_{i=1}^{n=62} \frac {q_i}{2}\cdot pr_i ) $$
 
 
 ```{r}
@@ -47,42 +57,56 @@ kable(df, col.names = c("boxID vs MatID", "part_j1", "part_j2","part_j3","part_j
 $b_{i}=$capacity of a box for part $i$ given in pieces
 $b_{j}=$ Size of box $j$
 $$b_{j}= box_{length} \times box_{width} \times box_{height}$$
-Assuming $q_i=50$ for part $i$ and $b_i=45$ then number of boxes ordered is $\frac {q_i}{b_i}= \frac {50}{45}=1.1=1$ because only complete boxes can be ordered
+Assuming $q_i=50$ the number of boxes for part $i$ , if $de=12$ $\frac {q_i}{de_i}= \frac {50}{12}=4.16=4$ it takes 4 days for another other to be placed. 
 
 # Optimum Ordering constraint
 
-$$x_i=\frac {q_i}{b_i}=Number \space boxes \space ordered  \\ 
-\frac {d_i}{b_i}=Number \space boxes \space demanded \\
-T= \frac {q_i}{d_i}=TimeCycle$$   
+$$q_i=Number \space boxes \space ordered  \\ 
+de_i=Number \space boxes \space demanded \\
+T= \frac {q_i}{de_i}=TimeCycle$$   
 Constraint:
-$$\frac {q_i}{b_i} - \frac {d_i}{b_i} \cdot T \le 0$$
+$$q_i -  {de_i} \cdot T \le 0$$
 # Rack Length or one runway constraint
 
 $n_k=$Number of boxes in a runway $k$ with box ID $j$ for part $i\\$:
 E.g: box ID 3103147 has a width of 198 but Rack length is 6000,
-maximum number of box 3103147 in runway is $n_k= \frac {6000}{198}=30.30=30 \space boxes\\$
+maximum number of box 3103147 in runway is $n_k= \frac {6000}{297}=20.20=20 \space boxes\\$
 
 $$ n_{k}=\frac {rack_{length}}{b_{ji\space length}} \\ $$
 $x_{i}=$ lets say that there are 720 boxes with id 3103147 containing part i Mat ID(7346592+72), the first 30 boxes are assigned to runway $k_1 \qquad$ 
 
-$x_{ik}=$ number of boxes ordered for part $i$ in runway $k, \qquad$ $b_{ji\space length}$ is the length of box id $j$ containing part $i,\space \\$
-$x_{ik}= \frac {q_{ik}}{b_{ik}} \\$
+$q_{ik}=$ number of boxes ordered for part $i$ in runway $k, \qquad$ $b_{ji\space length}$ is the length of box id $j$ containing part $i,\space \\$
 
 
-$$\sum_{i \in \mathcal I } x_{ik} \cdot b_{ji\space length} \le n_{k} \qquad \forall k \in \mathcal K $$
+$$\sum_{i \in \mathcal I } q_{ik} \cdot b_{ji\space length} \le n_{k} \qquad \forall k \in \mathcal K $$
 # Rack Width
 
 Collapsing Rack 4 levels in a rack and joining the 8 racks to become 1 level.
 
 Total rack width available: 
-$rack_{total_{Width}}=rack_{width} \times 4 \times 8\\$
+$rack_{total_{Width}}=(rack_{width} \times 4 \times 8) \rightarrow$
 Sum of number of parts $i$ is equal to box size for part $i$.
 
-$$\sum_{k \in \mathcal K } x_{kj} \cdot b_{ji\space width} \le rack_{total_{Width}}$$
+$$\sum_{k \in \mathcal K } q_{kj} \cdot b_{ji\space width} \le rack_{total_{Width}}$$
 
 
+## Joint Ordering(JO)
 
+Remember each time we order an Item we incur an ordering cost $c^{-or}$ of 1500 € for each of the 62 items.
 
+$c^{jo}=$Joint ordering cost
+$$c^{jo}=c^{-or} + \sum_{i=1}^{m=62}  c_i^{or}$$
+Let $n=\frac {de}{q}=$ order frequency
+
+Order Frequency:
+$$n^*=\sqrt (h \cdot \frac  {\sum_{i=1}^{m=62} \cdot de_i \cdot pr_i}{2 \cdot c^{jo}}) $$
+Therefore Ordering cost is $c^{jo} \cdot n$
+
+$holding \_ cost \rightarrow \frac {q}{2} \cdot h \cdot pr \rightarrow \frac {de}{2n} \cdot h \cdot pr $
+
+$$min \rightarrow c^{jo} \cdot n + \sum_{i=1}^{m=62} \frac {de_i}{2n} \cdot h \cdot pr_i   $$
+
+$$q_i = \frac {de_i}{n^*} $$ 
 ```{r}
 
 ```

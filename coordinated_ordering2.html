@@ -385,9 +385,17 @@ summary {
 <li><p>Instantaneous replenishment: As soon as you place an order, the item arrives. Lead time= 0</p></li>
 <li><p>No shortage: As soon as stock level on Y axis reaches 0, place an order for another quantity q. thus instanstaneous replenishment.</p></li>
 </ol>
-<p>In the data set “Data_ordering.xlsx” parts are represented by material ID column. <span class="math inline">\(i=\)</span>denotes part <span class="math inline">\(i \in \mathcal I \qquad \{i_1,i_2,...,i_{62}\}, \space\)</span> <span class="math inline">\(d_i=\)</span> demand per day for part <span class="math inline">\(i, \space\)</span> <span class="math inline">\(c_i^{or}=\)</span> ordering cost for part <span class="math inline">\(i ,\space\)</span></p>
+<p>In the data set “Data_ordering.xlsx” parts are represented by material ID column. <span class="math inline">\(i=\)</span>denotes part <span class="math inline">\(i \in \mathcal I \qquad \{i_1,i_2,...,i_{62}\}, \space\)</span> <span class="math inline">\(d_i=\)</span> demand per day for part <span class="math inline">\(i, \space\)</span></p>
+<p>Convert demand <span class="math inline">\(d_i\)</span>, quantity <span class="math inline">\(q_i\)</span> and unit price<span class="math inline">\(p_i\)</span> all from part <span class="math inline">\(i\)</span> to box <span class="math inline">\(bi\)</span> which is the capacity of a box for part <span class="math inline">\(i\)</span></p>
+<p><span class="math inline">\(de_i=\frac {d_i}{b_i} \rightarrow\)</span> Demand for box with part <span class="math inline">\(i\)</span> <span class="math inline">\(\mathcal pr_i= b_i \cdot p_i \rightarrow\)</span> Price for box with material <span class="math inline">\(i\)</span></p>
+<p><span class="math inline">\(c_i^{or}=\)</span> ordering cost for part <span class="math inline">\(i ,\space\)</span></p>
 <p><span class="math inline">\(c_i^{sh}=\)</span> stock holding cost rate based on unit price <span class="math inline">\(p_i\)</span> and interest rate <span class="math inline">\(h, \qquad\)</span>. <span class="math inline">\(c_i^{sh}=p_i \cdot h\)</span></p>
-<p>calculate EOQ for each part i: <span class="math display">\[ q_i^* = \sqrt \frac {2 \cdot d_i \cdot (c_i^{or}+c^{-or})} {p_i \cdot h}\]</span> <span class="math inline">\(\frac {d_i}{q_i}=\)</span> no of orders per day for part <span class="math inline">\(i, \qquad\)</span> <span class="math inline">\(\frac {q_i}{2}=\)</span> average inventory for part <span class="math inline">\(i\)</span> <span class="math display">\[ min \rightarrow (c_i^{-or}+ \sum_{i=1}^{n=62} \frac {d_i}{q_i} \cdot c_i^{or}) + (h \cdot \sum_{i=1}^{n=62} \frac {q_i}{2}\cdot p_i ) \]</span></p>
+</div>
+<div id="separate-ordering-so" class="section level2">
+<h2>Separate Ordering (SO)</h2>
+<p>calculate EOQ for each part i: <span class="math display">\[ q_i^* = \sqrt \frac {2 \cdot de_i \cdot (c_i^{or}+c^{-or})} {pr_i \cdot h}\]</span> <span class="math inline">\(\frac {d_i}{q_i}=\)</span> no of orders for part <span class="math inline">\(i, \qquad\)</span> <span class="math inline">\(\frac {q_i}{2}=\)</span> average inventory for part <span class="math inline">\(i\)</span></p>
+<p>Note: In row 5 $MateiralID $7305673+76 has 16 pieces in a box and row 8 $MateiralID-&gt;$7305819+79 has 6 pieces in a box , both has same $boxID $6203059 with <span class="math inline">\(c_i^{or}= 80 €\)</span></p>
+<p><span class="math display">\[ min \rightarrow (c^{-or} \cdot \sum_{i=1}^{n=62} \frac {de_i}{q_i} \cdot c_i^{or}) + (h \cdot \sum_{i=1}^{n=62} \frac {q_i}{2}\cdot pr_i ) \]</span></p>
 <pre class="r"><code>library(kableExtra)
 library(knitr)
 df &lt;- data.frame(Cat = c(&quot;box 1i&quot;, &quot;box 2i&quot;), 
@@ -457,21 +465,30 @@ yes
 </tr>
 </tbody>
 </table>
-<p><span class="math inline">\(b_{i}=\)</span>capacity of a box for part <span class="math inline">\(i\)</span> given in pieces <span class="math inline">\(b_{j}=\)</span> Size of box <span class="math inline">\(j\)</span> <span class="math display">\[b_{j}= box_{length} \times box_{width} \times box_{height}\]</span> Assuming <span class="math inline">\(q_i=50\)</span> for part <span class="math inline">\(i\)</span> and <span class="math inline">\(b_i=45\)</span> then number of boxes ordered is <span class="math inline">\(\frac {q_i}{b_i}= \frac {50}{45}=1.1=1\)</span> because only complete boxes can be ordered</p>
+<p><span class="math inline">\(b_{i}=\)</span>capacity of a box for part <span class="math inline">\(i\)</span> given in pieces <span class="math inline">\(b_{j}=\)</span> Size of box <span class="math inline">\(j\)</span> <span class="math display">\[b_{j}= box_{length} \times box_{width} \times box_{height}\]</span> Assuming <span class="math inline">\(q_i=50\)</span> the number of boxes for part <span class="math inline">\(i\)</span> , if <span class="math inline">\(de=12\)</span> <span class="math inline">\(\frac {q_i}{de_i}= \frac {50}{12}=4.16=4\)</span> it takes 4 days for another other to be placed.</p>
 </div>
 <div id="optimum-ordering-constraint" class="section level1">
 <h1>Optimum Ordering constraint</h1>
-<p><span class="math display">\[x_i=\frac {q_i}{b_i}=Number \space boxes \space ordered  \\ 
-\frac {d_i}{b_i}=Number \space boxes \space demanded \\
-T= \frac {q_i}{d_i}=TimeCycle\]</span><br />
-Constraint: <span class="math display">\[\frac {q_i}{b_i} - \frac {d_i}{b_i} \cdot T \le 0\]</span> # Rack Length or one runway constraint</p>
-<p><span class="math inline">\(n_k=\)</span>Number of boxes in a runway <span class="math inline">\(k\)</span> with box ID <span class="math inline">\(j\)</span> for part <span class="math inline">\(i\\\)</span>: E.g: box ID 3103147 has a width of 198 but Rack length is 6000, maximum number of box 3103147 in runway is <span class="math inline">\(n_k= \frac {6000}{198}=30.30=30 \space boxes\\\)</span></p>
+<p><span class="math display">\[q_i=Number \space boxes \space ordered  \\ 
+de_i=Number \space boxes \space demanded \\
+T= \frac {q_i}{de_i}=TimeCycle\]</span><br />
+Constraint: <span class="math display">\[q_i -  {de_i} \cdot T \le 0\]</span> # Rack Length or one runway constraint</p>
+<p><span class="math inline">\(n_k=\)</span>Number of boxes in a runway <span class="math inline">\(k\)</span> with box ID <span class="math inline">\(j\)</span> for part <span class="math inline">\(i\\\)</span>: E.g: box ID 3103147 has a width of 198 but Rack length is 6000, maximum number of box 3103147 in runway is <span class="math inline">\(n_k= \frac {6000}{297}=20.20=20 \space boxes\\\)</span></p>
 <p><span class="math display">\[ n_{k}=\frac {rack_{length}}{b_{ji\space length}} \\ \]</span> <span class="math inline">\(x_{i}=\)</span> lets say that there are 720 boxes with id 3103147 containing part i Mat ID(7346592+72), the first 30 boxes are assigned to runway <span class="math inline">\(k_1 \qquad\)</span></p>
-<p><span class="math inline">\(x_{ik}=\)</span> number of boxes ordered for part <span class="math inline">\(i\)</span> in runway <span class="math inline">\(k, \qquad\)</span> <span class="math inline">\(b_{ji\space length}\)</span> is the length of box id <span class="math inline">\(j\)</span> containing part <span class="math inline">\(i,\space \\\)</span> <span class="math inline">\(x_{ik}= \frac {q_{ik}}{b_{ik}} \\\)</span></p>
-<p><span class="math display">\[\sum_{i \in \mathcal I } x_{ik} \cdot b_{ji\space length} \le n_{k} \qquad \forall k \in \mathcal K \]</span> # Rack Width</p>
+<p><span class="math inline">\(q_{ik}=\)</span> number of boxes ordered for part <span class="math inline">\(i\)</span> in runway <span class="math inline">\(k, \qquad\)</span> <span class="math inline">\(b_{ji\space length}\)</span> is the length of box id <span class="math inline">\(j\)</span> containing part <span class="math inline">\(i,\space \\\)</span></p>
+<p><span class="math display">\[\sum_{i \in \mathcal I } q_{ik} \cdot b_{ji\space length} \le n_{k} \qquad \forall k \in \mathcal K \]</span> # Rack Width</p>
 <p>Collapsing Rack 4 levels in a rack and joining the 8 racks to become 1 level.</p>
-<p>Total rack width available: <span class="math inline">\(rack_{total_{Width}}=rack_{width} \times 4 \times 8\\\)</span> Sum of number of parts <span class="math inline">\(i\)</span> is equal to box size for part <span class="math inline">\(i\)</span>.</p>
-<p><span class="math display">\[\sum_{k \in \mathcal K } x_{kj} \cdot b_{ji\space width} \le rack_{total_{Width}}\]</span></p>
+<p>Total rack width available: <span class="math inline">\(rack_{total_{Width}}=(rack_{width} \times 4 \times 8) \rightarrow\)</span> Sum of number of parts <span class="math inline">\(i\)</span> is equal to box size for part <span class="math inline">\(i\)</span>.</p>
+<p><span class="math display">\[\sum_{k \in \mathcal K } q_{kj} \cdot b_{ji\space width} \le rack_{total_{Width}}\]</span></p>
+<div id="joint-orderingjo" class="section level2">
+<h2>Joint Ordering(JO)</h2>
+<p>Remember each time we order an Item we incur an ordering cost <span class="math inline">\(c^{-or}\)</span> of 1500 € for each of the 62 items.</p>
+<p><span class="math inline">\(c^{jo}=\)</span>Joint ordering cost <span class="math display">\[c^{jo}=c^{-or} + \sum_{i=1}^{m=62}  c_i^{or}\]</span> Let <span class="math inline">\(n=\frac {de}{q}=\)</span> order frequency</p>
+<p>Order Frequency: <span class="math display">\[n^*=\sqrt (h \cdot \frac  {\sum_{i=1}^{m=62} \cdot de_i \cdot pr_i}{2 \cdot c^{jo}}) \]</span> Therefore Ordering cost is <span class="math inline">\(c^{jo} \cdot n\)</span></p>
+<p>$holding _ cost  h pr  h pr $</p>
+<p><span class="math display">\[min \rightarrow c^{jo} \cdot n + \sum_{i=1}^{m=62} \frac {de_i}{2n} \cdot h \cdot pr_i   \]</span></p>
+<p><span class="math display">\[q_i = \frac {de_i}{n^*} \]</span></p>
+</div>
 </div>
 
 
