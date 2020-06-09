@@ -1,0 +1,45 @@
+---
+title: "coordinated_ordering_3"
+author: "Group B"
+date: "08/06/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Constraints
+
+$b_{sorting}=$ sorting column lenght or width.This determings the rack width
+
+$b_{-sorting}=$if sorted by length then the value is width and vice versa, 
+
+E.g Using box_ID 6203060, sorted by length
+$b_{sorting}=396$, $b_{-sorting}=297$
+Also for material ID 7305667+74 with $q_i=214$ therefore,
+$rack_{length}=6000$
+1. Fraction of $q_i$ in a rack length:
+$$q_i \cdot \frac {b_{-sorting}}{rack_{length}}=214 \cdot \frac {297}{6000}=10.593= 10 boxes $$
+10 boxes for material ID 7305667+74 in a lane or rackway.
+
+(2) How many lanes part $i$ will occupy if you order some number of boxes.
+$$\frac {2 \cdot  q_i \cdot b{-sorting}}{rack_{length}}= \frac {2 \cdot 214 \cdot 297}{6000}=21.186=22 lanes$$
+This box needs 22 lanes or runways.
+
+(3) Fraction of Runway width occupied by box i : 
+$$b_{sorting}/rack_{totalWidth}$$
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

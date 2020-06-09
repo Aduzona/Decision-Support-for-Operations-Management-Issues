@@ -2,7 +2,9 @@
 title: "cooredinated_ordering2"
 author: "Group B"
 date: "30/05/2020"
-output: html_document
+output:
+  word_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
