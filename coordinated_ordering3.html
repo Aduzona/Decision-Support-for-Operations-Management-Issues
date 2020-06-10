@@ -536,7 +536,7 @@ rack_width_occupied</code></pre>
 <ol start="4" style="list-style-type: upper-alpha">
 <li>Adjust Q by reducing it:</li>
 </ol>
-<p><span class="math inline">\(\frac {d_i}{q_i}=\)</span> no of orders for part <span class="math inline">\(i \\\)</span> <span class="math inline">\(\frac {q_i}{2}=\)</span> average inventory for part <span class="math inline">\(i\)</span></p>
+<p><span class="math inline">\(\frac {de_i}{q_i}=\)</span> no of orders for part <span class="math inline">\(i \\\)</span> <span class="math inline">\(\frac {q_i}{2}=\)</span> average inventory for part <span class="math inline">\(i\)</span></p>
 <p><span class="math display">\[ min \rightarrow (\sum_{i=1}^{n=62}c^{-or} + \sum_{i=1}^{n=62} \frac {de_i}{q_i} \cdot c_i^{or}) + (h \cdot \sum_{i=1}^{n=62} \frac {q_i}{2}\cdot pr_i ) \]</span> Subject to: <span class="math display">\[\sum_{i=1}^{n=62} q_i \cdot \frac {b_{i(-sorting)} \cdot b_{i(sorting)}}{rack_{length}} \le rack_{Total_{width}} \]</span></p>
 <p>Calculating using the current EOQ</p>
 <pre class="r"><code>#dei=product_data$demand_per_year,cori=product_data$ordering_cost,cord=1500,pri=product_data$box_cost,h=0.10
@@ -553,6 +553,40 @@ so_obj_funct(1500,product_data$ordering_cost,product_data$demand_per_year,produc
 </div>
 <div id="optimization-with-respect-to-capacity-contraint" class="section level1">
 <h1>Optimization with respect to capacity contraint</h1>
+<p>n= 62 Material items.</p>
+<pre class="r"><code>#library(Rglpk)
+library(ROI)</code></pre>
+<pre><code>## ROI: R Optimization Infrastructure</code></pre>
+<pre><code>## Registered solver plugins: nlminb, alabama, glpk, quadprog, symphony.</code></pre>
+<pre><code>## Default solver: auto.</code></pre>
+<pre class="r"><code># solver for non-linear, generally constrained programs
+library(ROI.plugin.alabama)
+
+n &lt;- length(product_data$`material ID`) #number of materials
+cori &lt;- product_data$ordering_cost   #ordering cost for each items
+cord &lt;-  1500    #ordering cost whenever there is an order
+dei &lt;- product_data$demand_per_year
+h&lt;-0.10
+box_cost &lt;- product_data$box_cost #pri
+
+qopt &lt;- OP(
+  objective = F_objective(F=function(q) ((1500*62)+sum((dei/q)*cori)+ (h*sum((q/2)*box_cost)))
+,n=length(product_data$`material ID`)),
+types = rep(&quot;C&quot;,length(product_data$`material ID`)),
+bounds = V_bound(ub= product_data$eoq,lb= rep(1, length(product_data$`material ID`))),
+constraints = F_constraint(F=function(q) q*((b_not_sorting*b_sorting)/rack_length),
+dir=&quot;&lt;=&quot;,
+rhs = rack_total_width)
+)
+
+c(numeric(length(product_data$`material ID`)))</code></pre>
+<pre><code>##  [1] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+## [39] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0</code></pre>
+<pre class="r"><code>?ROI_solve()</code></pre>
+<pre><code>## starting httpd help server ...</code></pre>
+<pre><code>##  done</code></pre>
+<pre class="r"><code>#solve the problem
+#sol.const &lt;- ROI_solve(qopt,start=c(numeric(length(product_data$`material ID`))),solver = &quot;alabama&quot;)</code></pre>
 </div>
 
 

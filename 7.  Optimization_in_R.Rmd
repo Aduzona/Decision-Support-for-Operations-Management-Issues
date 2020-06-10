@@ -421,3 +421,21 @@ x_ij \in \{0,1\}\\
 
 In the extensive ILP formulation, the decision vector is defined as
 $X=(x_{11},x_{12},...,x_{1n},x_{21},...,x_{nn}).$ for a linear assignment problem with 3 rooms/elements, the constraint matrix is constructs as 
+```{r}
+# create problem dimension
+
+n <- 10
+
+# create cost vector
+c.vec <- rpois(n^2, 100) #sample costs from Poisson distribution with mean 100
+
+# create empty constraint matrix
+L.mat <- matrix(0,ncol = n^2, nrow = 2*n)
+#first n rows
+#do.call= constructs and executes a function call from a function and a list of arguments.
+#cbind is column bind od 1:n rows
+L.mat[1:n,] <- do.call(cbind, lapply(1:n, function(x) diag(n)))
+
+#last n rows
+L.mat[(n+1):(2*n),] <- t(sapply(1:n,function(x) c(rep(0,(x-1)*n), rep(1,n),rep(0,(n-x)*n))))
+```

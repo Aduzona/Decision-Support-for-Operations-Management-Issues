@@ -200,7 +200,7 @@ $$214 \cdot \frac {396 \cdot 297}{6000}=4194.828 \\ b_{isorting}= \frac {4194.82
 
 (D) Adjust Q by reducing it:
 
-$\frac {d_i}{q_i}=$ no of orders for part $i \\$
+$\frac {de_i}{q_i}=$ no of orders for part $i \\$
 $\frac {q_i}{2}=$ average inventory for part $i$
 
 
@@ -222,7 +222,41 @@ so_obj_funct<-function(cord,cori,dei,eoq,h,pri){
 
 so_obj_funct(1500,product_data$ordering_cost,product_data$demand_per_year,product_data$eoq,0.10,product_data$box_cost)
 
+
 ```
 
 
 # Optimization with respect to capacity contraint
+n= 62 Material items.
+```{r}
+#library(Rglpk)
+library(ROI)
+# solver for non-linear, generally constrained programs
+library(ROI.plugin.alabama)
+
+n <- length(product_data$`material ID`) #number of materials
+cori <- product_data$ordering_cost   #ordering cost for each items
+cord <-  1500    #ordering cost whenever there is an order
+dei <- product_data$demand_per_year
+h<-0.10
+box_cost <- product_data$box_cost #pri
+
+qopt <- OP(
+  objective = F_objective(F=function(q) ((1500*62)+sum((dei/q)*cori)+ (h*sum((q/2)*box_cost)))
+,n=length(product_data$`material ID`)),
+types = rep("C",length(product_data$`material ID`)),
+bounds = V_bound(ub= product_data$eoq,lb= rep(1, length(product_data$`material ID`))),
+constraints = F_constraint(F=function(q) q*((b_not_sorting*b_sorting)/rack_length),
+dir="<=",
+rhs = rack_total_width)
+)
+
+c(numeric(length(product_data$`material ID`)))
+?ROI_solve()
+#solve the problem
+sol.const <- ROI_solve(qopt,start=c(numeric(length(product_data$`material ID`))),solver = "alabama")
+
+
+
+```
+

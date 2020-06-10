@@ -149,12 +149,55 @@ x_{ij} & \geq 0 \\
 
 where $a_i$ is the maximum supply capacity of node $i \in \mathcal{V}_a$, $b_k$ denotes the demand of node $j \in \mathcal{V}_b$, $c_{ij/jk}$ are transport cost rates and $x_{ij/jk}$ are shipment quantities. 
 ```{r}
+n.a<- 4  #number sources
+n.b <- 5 # number sinks
+n.t <- 3 #number terminals
+
+nam.A <- paste("A",1:n.a, sep = "")
+nam.B <- paste("B",1:n.b, sep = "")
+nam.c <- paste("T",1:n.t, sep = "")
+# sample demand & supply
+
+repeat{
+  d.vec <- round(runif(n.b, min = 100, max = 200))
+  s.vec <- round(runif(n.a, min = 150, max = 250))
+  #check for sufficient supply
+  if(sum(d.vec) < sum(s.vec)) break
+}
+d.vec # 5 vector values uniformly distributed
+s.vec # 4 vector values uniformly distributed
+#sample distances
+## sources-terminals
+d.a.t <- round(runif(n.a*n.t, min = 1, max = 50))
+d.a.t # 12 vector values representing quantity from i to j
+## terminals-sinks
+d.t.b <- round(runif(n.b*n.t, min = 1, max = 30))
+d.t.b # 15 vector  values quantitites from j to k(Xjk)
+# initialize decision variables
+x.vec <- numeric(n.a*n.t + n.b*n.t)
+x.vec # 12+15 =27 spaces
+# right- hand side vector
+?rep()
+b.vec <- c(s.vec, d.vec, rep(0, n.t))
+b.vec #12 elements in the vector
+
+#objective coefficients
+c.vec <- c(d.a.t, d.t.b)
+c.vec# 27 elements in the vector
+
+# vector with constraint directions 
+const.vec <- c(rep("<=", n.a), rep(">=", n.b) , rep("==", n.t) )
+const.vec
+# vector with variable types
+vtype.vec <- rep("C", length(x.vec))
+vtype.vec
+# contraint matrix A
 
 ```
 
 
 #Exercise 5: 
-Change the problem by adding constraints that prohibit the center to be closer than 0.5 diatance units to any point
+Change the problem by adding constraints that prohibit the center to be closer than 0.5 distance units to any point
 ```{r}
 
 #solver for non linear, generally contrained programs
@@ -172,7 +215,7 @@ x.vec <- rnorm(n)
 y.vec <- rnorm(n)
 
 #Set up optimization program
-#bounds loc[1]= [-Inf,Inf], loc[2]=[-Inf,Inf] thus the rep(Inf,2) range values for x axis of both loc[1] and loc[2], rep(-Inf,2) range valuesfor y axis of both loc[1] and loc[2]
+#bounds loc[1]= [-Inf,Inf], loc[2]=[-Inf,Inf] thus the rep(Inf,2) range values for x axis of both loc[1] and loc[2], rep(-Inf,2) range values for y axis of both loc[1] and loc[2]
 copt <- OP(
   objective =  F_objective(F=function(loc) sum(a.vec * (abs(x.vec - loc[1]) + abs(y.vec - loc[2]) ) ), n = 2),
   types = rep("C", 2),
