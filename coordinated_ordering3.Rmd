@@ -9,37 +9,220 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## Coordinated Ordering
+
+1. Deterministic/continous Demand: The same amount of demand is there every instance of time and demand are met at every instance of time, thus no time varying demand
+
+2. Instantaneous replenishment: As soon as you place an order,  the item arrives. Lead time= 0
+
+3. No shortage: As soon as stock level on Y axis reaches 0, place an order for another quantity q. thus instanstaneous replenishment. 
+
+In the data set "Data_ordering.xlsx" parts are represented by material ID column.
+$i=$denotes part
+$i \in \mathcal I \qquad \{i_1,i_2,...,i_{62}\} \\$
+$d_i=$ demand per day for part $i \\$
+
+# data Extraction
+
+```{r}
+library("readxl")
+product_data <- read_excel("Data_ordering.xlsx",sheet = "product data")
+box_data <- read_excel("Data_ordering.xlsx",sheet = "box data")
+
+#rack data
+Total_racks=8
+levels_per_rack=4
+rack_length= 6000
+rack_width=1750
+rack_height=300
+
+```
+
+# Convert to Boxes
+Convert demand $d_i$, quantity $q_i$ and unit price$p_i$ all from part $i$ to box $bi$ which is the capacity of a box for part $i$ 
+
+$de_i=\frac {d_i}{b_i} \rightarrow$ Demand for box with part $i \\$
+$\mathcal pr_i= b_i \cdot p_i \rightarrow$ Price for box with material $i \\$
+$de_i = demand\_per\_year \\ ,$
+$pr_i = box\_cost$
+
+```{r}
+#assuming there are 365 working days in a year
+#converting everything to boxes
+
+product_data$demand_per_year= ceiling((product_data$`demand per day` *365)/ product_data$`pieces/box`)
+
+product_data$box_cost= product_data$`pieces/box` * product_data$price
+
+product_data
+```
+
+Append Ordering cost for each item
+
+```{r}
+
+order_cost <- double(length(product_data$`box ID`))
+
+  for(j in 1: length(box_data$`box ID`)){
+    for (k in 1:length(product_data$`box ID`)) {
+      if(box_data$`box ID`[j]==product_data$`box ID`[k]){
+        order_cost[k] <- box_data$`ordering cost (€)`[j]
+      }
+    }
+    
+  }
+
+product_data$ordering_cost <- order_cost 
+product_data
+```
+$c_i^{or}=$ ordering cost for part $i ,\space$
+
+$c_i^{sh}=$ stock holding cost rate based on unit price $p_i$ and interest rate $h, \qquad$.
+$c_i^{sh}=p_i \cdot h$
+
+## Separate Ordering (SO)
+calculate EOQ for each part i:
+$$ q_i^* = \sqrt \frac {2 \cdot de_i \cdot (c_i^{or}+c^{-or})} {pr_i \cdot h}$$
+A. Calculate The EOQ:
+```{r}
+#EOQ
+#dei= demand_per_year, cori= ordering cost for box i
+#cord= ordering cost, pri= box cost, h= interest rate
+so_eoq_fun <- function(dei,cori,cord,pri,h){
+  eoq<- sqrt((2*dei*(cori+cord))/(pri*h))
+  
+  return(eoq)
+}
+
+vec_so_eoq_fun <- Vectorize(so_eoq_fun(dei=product_data$demand_per_year,cori=product_data$ordering_cost,cord=1500,pri=product_data$box_cost,h=0.10))
+
+#Append Vector eoq to the table
+product_data$eoq <- ceiling(vec_so_eoq_fun)
+```
+
+
+B Number of lanes you occupy with EOQ
+
 ## Constraints
 
-$b_{sorting}=$ sorting column lenght or width.This determings the rack width
+$b_{i(sorting)}=$ sorting column lenght or width.This determines the rack width
 
-$b_{-sorting}=$if sorted by length then the value is width and vice versa, 
+$b_{i(-sorting)}=$if sorted by length then the value is width and vice versa, 
+
+Add $b_{i(sorting)}$ and $b_{i(-sorting)}$ to product_data table
+```{r}
+#create a space holder
+b_sorting <- double(length(product_data$`box ID`)) 
+b_not_sorting <-double(length(product_data$`box ID`))
+
+  for(j in 1: length(box_data$`box ID`)){
+    for (k in 1:length(product_data$`box ID`)) {
+      if(box_data$`box ID`[j]==product_data$`box ID`[k]){
+        
+        if(box_data$sorting[j]=="width"){
+          b_sorting[k] <- box_data$width[j]
+          b_not_sorting[k]<- box_data$length[j]
+          
+        }else{
+          b_sorting[k] <- box_data$length[j]
+          b_not_sorting[k]<- box_data$width[j]
+        }
+      }
+    }
+    
+  }
+
+
+product_data$b_sorting <- b_sorting 
+product_data$b_not_sorting <- b_not_sorting
+```
+
 
 E.g Using box_ID 6203060, sorted by length
-$b_{sorting}=396$, $b_{-sorting}=297$
+$b_{i(sorting)}=396$, $b_{i(-sorting)}=297$
 Also for material ID 7305667+74 with $q_i=214$ therefore,
-$rack_{length}=6000$
-1. Fraction of $q_i$ in a rack length:
-$$q_i \cdot \frac {b_{-sorting}}{rack_{length}}=214 \cdot \frac {297}{6000}=10.593= 10 boxes $$
-10 boxes for material ID 7305667+74 in a lane or rackway.
+$rack_{length}=6000 \\$
+1. Number of boxes in a lane:
+$$n_i=\frac {rack_{length}}{b_{i(-sorting)}}=\frac {6000}{297}=20.20=20boxes$$
 
-(2) How many lanes part $i$ will occupy if you order some number of boxes.
-$$\frac {2 \cdot  q_i \cdot b{-sorting}}{rack_{length}}= \frac {2 \cdot 214 \cdot 297}{6000}=21.186=22 lanes$$
-This box needs 22 lanes or runways.
 
-(3) Fraction of Runway width occupied by box i : 
-$$b_{sorting}/rack_{totalWidth}$$
 
-```{r cars}
-summary(cars)
+
+
+2. How many lanes part $i$ will occupy if you order some number of boxes
+$$lane_i=\frac {q_i}{n_i}\\lane_i=q_i \cdot \frac {b_{i(-sorting)}}{rack_{length}}=214 \cdot \frac {297}{6000}=10.593= 11 \space lanes $$
+
+```{r}
+lane <- ceiling(product_data$eoq * (product_data$b_not_sorting/rack_length))
+lane
 ```
 
-## Including Plots
+(C) Do we meet the capacity contraint?
 
-You can also embed plots, for example:
+3. Total number of lanes constraints
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+Collapsing Rack 4 levels in a rack and joining the 8 racks to become 1 level.
+
+Total rack width available: 
+$$rack_{total_{Width}}=(rack_{width} \times 4 \times 8)$$
+```{r}
+rack_total_width <- rack_width * 4 * 8
+rack_total_width #56000 mm
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+Please note the coefficients are  are different for every ith item except racklength which is the same for all items.Also the left and right hand side of the equation need to be in mm.
+$$\sum_{i=1}^{n=62}lane_i \cdot b_{i(sorting)}\le rack_{Total_{width}} \\ \sum_{i=1}^{n=62} q_i \cdot \frac {b_{i(-sorting)} \cdot b_{i(sorting)}}{rack_{length}} \le rack_{Total_{width}} \quad \quad (1)$$
+
+```{r}
+#get the with of the lanes in mm
+rack_width_occupied=sum(sum(lane*product_data$b_sorting))
+rack_width_occupied
+if(rack_width_occupied <= rack_total_width){
+  print(past0("Capacity constraint fulfilled: ", rack_width_occupied, "<=",rack_total_width))
+ 
+}else {
+  violated <- rack_width_occupied - rack_total_width
+  print(paste0("Capacity constraint violated by: ",violated ))
+}
+
+```
+As seen above contraint was voilated by $1387664 mm$, this means that we ordered too much, therefore we need to optimize $q_i$
+
+
+#Prove equation 1 for  single item using same figures above:
+Using our example to get number of the total width i.e (summation of lanes) in $mm$: 
+Summation of lanes can simply be: 
+$$lanes_i \cdot b_{i(sorting)}= 10.593 \cdot 396=4194.828$$
+Using equation (1) to prove this concept.
+
+$$214 \cdot \frac {396 \cdot 297}{6000}=4194.828 \\ b_{isorting}= \frac {4194.828}{10.593}=396$$
+
+(D) Adjust Q by reducing it:
+
+$\frac {d_i}{q_i}=$ no of orders for part $i \\$
+$\frac {q_i}{2}=$ average inventory for part $i$
+
+
+
+$$ min \rightarrow (\sum_{i=1}^{n=62}c^{-or} + \sum_{i=1}^{n=62} \frac {de_i}{q_i} \cdot c_i^{or}) + (h \cdot \sum_{i=1}^{n=62} \frac {q_i}{2}\cdot pr_i ) $$
+Subject to:
+$$\sum_{i=1}^{n=62} q_i \cdot \frac {b_{i(-sorting)} \cdot b_{i(sorting)}}{rack_{length}} \le rack_{Total_{width}} $$
+
+Calculating using the current EOQ
+```{r}
+
+#dei=product_data$demand_per_year,cori=product_data$ordering_cost,cord=1500,pri=product_data$box_cost,h=0.10
+
+so_obj_funct<-function(cord,cori,dei,eoq,h,pri){
+  
+  obj <- (62*cord)+(sum((dei/eoq)*cori))+ (h*sum((eoq/2)*pri))
+  return(obj)
+}
+
+so_obj_funct(1500,product_data$ordering_cost,product_data$demand_per_year,product_data$eoq,0.10,product_data$box_cost)
+
+```
+
+
+# Optimization with respect to capacity contraint
