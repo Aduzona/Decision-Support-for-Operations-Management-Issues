@@ -569,24 +569,99 @@ dei &lt;- product_data$demand_per_year
 h&lt;-0.10
 box_cost &lt;- product_data$box_cost #pri
 
-qopt &lt;- OP(
-  objective = F_objective(F=function(q) ((1500*62)+sum((dei/q)*cori)+ (h*sum((q/2)*box_cost)))
-,n=length(product_data$`material ID`)),
-types = rep(&quot;C&quot;,length(product_data$`material ID`)),
-bounds = V_bound(ub= product_data$eoq,lb= rep(1, length(product_data$`material ID`))),
-constraints = F_constraint(F=function(q) q*((b_not_sorting*b_sorting)/rack_length),
-dir=&quot;&lt;=&quot;,
-rhs = rack_total_width)
+# objective function --&gt; I dropped the 1500*62 as it is not decision relevant
+obj.fun &lt;- function(q, d= dei, c.or = cori, c.h = h*box_cost  ) (sum((dei/q)*c.or)+ sum(c.h*(q/2)))
+# benchmarks
+obj.fun(max(product_data$eoq))</code></pre>
+<pre><code>## [1] 570664</code></pre>
+<pre class="r"><code>obj.fun(min(product_data$eoq))</code></pre>
+<pre><code>## [1] 48918.81</code></pre>
+<pre class="r"><code># constraint function --&gt; also contains the ceiling of lanes and a sum was missing
+const.fun &lt;- function(q, bns = product_data$b_not_sorting, bs = product_data$b_sorting, rl = rack_length) {
+  sum(bs * ceiling( bns * q / rl))
+  }
+
+const.fun(max(product_data$eoq))</code></pre>
+<pre><code>## [1] 6060320</code></pre>
+<pre class="r"><code>const.fun(min(product_data$eoq))</code></pre>
+<pre><code>## [1] 366272</code></pre>
+<pre class="r"><code># try to figure out a freasible starting solution
+const.fun(min(product_data$eoq)/10) -  rack_total_width</code></pre>
+<pre><code>## [1] -3284</code></pre>
+<pre class="r"><code>qopt &lt;- OP(
+  objective = F_objective(F=obj.fun ,n=n),
+  types = rep(&quot;C&quot;,n),
+  bounds = V_bound(ub= rep(max(product_data$eoq),n) , lb= rep(1, n)),
+  constraints = F_constraint(F=const.fun,
+                             dir=&quot;&lt;=&quot;,
+                             rhs = rack_total_width)
 )
 
-c(numeric(length(product_data$`material ID`)))</code></pre>
-<pre><code>##  [1] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-## [39] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0</code></pre>
-<pre class="r"><code>?ROI_solve()</code></pre>
+# solve the problem with appropriate starting vlaue and proper solver
+?ROI_solve</code></pre>
 <pre><code>## starting httpd help server ...</code></pre>
 <pre><code>##  done</code></pre>
-<pre class="r"><code>#solve the problem
-#sol.const &lt;- ROI_solve(qopt,start=c(numeric(length(product_data$`material ID`))),solver = &quot;alabama&quot;)</code></pre>
+<pre class="r"><code>min(product_data$eoq) #173</code></pre>
+<pre><code>## [1] 173</code></pre>
+<pre class="r"><code>rack_total_width #56000</code></pre>
+<pre><code>## [1] 56000</code></pre>
+<pre class="r"><code>#This shows that minimum EOQ is too big and therefore will not meet the rack space constraint.
+const.fun(min(product_data$eoq))#366272</code></pre>
+<pre><code>## [1] 366272</code></pre>
+<pre class="r"><code>const.fun(min(product_data$eoq)/8)# 61428  still &gt; 56000</code></pre>
+<pre><code>## [1] 61428</code></pre>
+<pre class="r"><code>const.fun(min(product_data$eoq)/8.7)#52716 &lt; 56000</code></pre>
+<pre><code>## [1] 52716</code></pre>
+<pre class="r"><code>const.fun(round(min(product_data$eoq)/10))# 52716 &lt; 56000</code></pre>
+<pre><code>## [1] 52716</code></pre>
+<pre class="r"><code>round(min(product_data$eoq)/10) #17.3</code></pre>
+<pre><code>## [1] 17</code></pre>
+<p>We will use min(product_data$eoq)/10 as our starting value because it seemed as the closest value to 56,000 which is the capacity</p>
+<pre class="r"><code>copt_sol &lt;- ROI_solve(qopt, start = rep(min(product_data$eoq)/10,n), solver = &quot;alabama&quot; )
+# always check whether the algorithm converged
+copt_sol# The objective value is: 1.313850e+05</code></pre>
+<pre><code>## Optimal solution found.
+## The objective value is: 1.313850e+05</code></pre>
+<pre class="r"><code># solution
+copt_sol$solution #vector of optimal Quantity that meets the space constraints and minimizes the Obj function.</code></pre>
+<pre><code>##  [1] 19.37164 21.02634 21.24519 21.74656 21.74656 20.18584 22.13884 22.34026
+##  [9] 21.35911 21.45702 20.20200 20.45919 20.44665 19.73786 22.26270 22.06554
+## [17] 19.90296 19.91588 19.90694 19.56216 19.37097 19.96680 20.05206 19.92238
+## [25] 19.90919 20.39379 20.26141 21.73427 21.73367 19.27732 19.30853 18.57280
+## [33] 18.67564 19.44872 19.61198 21.21350 21.75563 20.64402 19.95120 19.76402
+## [41] 20.46147 20.45473 20.62659 22.32568 22.32523 22.03786 22.04200 23.20436
+## [49] 23.14804 20.94197 21.27054 20.31225 22.06817 21.66285 20.00371 19.81107
+## [57] 20.27399 20.43553 20.69141 20.34752 20.20202 20.20202</code></pre>
+<pre class="r"><code>round(copt_sol$solution)</code></pre>
+<pre><code>##  [1] 19 21 21 22 22 20 22 22 21 21 20 20 20 20 22 22 20 20 20 20 19 20 20 20 20
+## [26] 20 20 22 22 19 19 19 19 19 20 21 22 21 20 20 20 20 21 22 22 22 22 23 23 21
+## [51] 21 20 22 22 20 20 20 20 21 20 20 20</code></pre>
+<pre class="r"><code>copt_sol$objval #131385</code></pre>
+<pre><code>## [1] 131385</code></pre>
+<pre class="r"><code>#########################################
+# Now you need to fine tune the results 
+# --&gt; there are rounding issues -&gt; exactly determining the lane configuration per shelf level
+# --&gt; idea to coping with the common ordering cost</code></pre>
+<pre class="r"><code>const.fun(copt_sol$solution)#55884</code></pre>
+<pre><code>## [1] 55884</code></pre>
+<pre class="r"><code>const.fun(round(copt_sol$solution))#55686</code></pre>
+<pre><code>## [1] 55686</code></pre>
+<pre class="r"><code>#check obj function
+
+obj.fun(copt_sol$solution)#131385</code></pre>
+<pre><code>## [1] 131385</code></pre>
+<pre class="r"><code>obj.fun(round(copt_sol$solution))#132096.3  rounded q values</code></pre>
+<pre><code>## [1] 132096.3</code></pre>
+<div id="joint-ordering-jo" class="section level2">
+<h2>Joint Ordering (JO)</h2>
+<p><span class="math inline">\(de_i=Number \space of \space boxes \space demanded \space for \space item \space i \\\)</span></p>
+<p><span class="math inline">\(q_i^*=EOQ \space for \space box \space with \space item \space i \\\)</span> <span class="math display">\[ q_i^* = \sqrt \frac {2 \cdot de_i \cdot c_i^{or}} {pr_i \cdot h}\]</span> <span class="math display">\[ \frac {de_i}{q_i}=Order\space frequency \space for \space item \space i\]</span> <span class="math inline">\(k= \{ \frac {de_1}{q_1},...,\frac {de_n}{q_n} \}\)</span> number of unique ordering frequency</p>
+<p>e.g there are 62 items assuming there are <span class="math inline">\(k=8\)</span> unique ordering frequency that is item 1 and item 7 can have the same ordering frequency. <span class="math display">\[\sum_{i=1}^{m=k} \frac {de_i}{q_i}\cdot c^{-or}+ \sum_{i=1}^{m=62} \frac {de_i}{q_i}\cdot c^{or}\]</span></p>
+<p><span class="math display">\[ min \rightarrow \sum_{i=1}^{m=62} \frac {q_i}{2} \cdot h \cdot pr_i +  \sum_{i=1}^{m=k} \frac {de_i}{q_i}\cdot c^{-or}+ \sum_{i=1}^{m=62} \frac {de_i}{q_i}\cdot c^{or}\]</span> Subject to: <span class="math display">\[\sum_{i=1}^{n=62} q_i \cdot \frac {b_{i(-sorting)} \cdot b_{i(sorting)}}{rack_{length}} \le rack_{Total_{width}} \]</span></p>
+<pre class="r"><code>#tinytex::install_tinytex()
+tinytex:::is_tinytex()</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+</div>
 </div>
 
 

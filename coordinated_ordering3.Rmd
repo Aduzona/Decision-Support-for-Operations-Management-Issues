@@ -2,7 +2,7 @@
 title: "coordinated_ordering_3"
 author: "Group B"
 date: "08/06/2020"
-output: html_document
+output:html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -319,5 +319,26 @@ obj.fun(round(copt_sol$solution))#132096.3  rounded q values
 
 ## Joint Ordering (JO)
 
+
+$de_i=Number \space of \space boxes \space demanded \space for \space item \space i \\$
+
+
+$q_i^*=EOQ \space for \space box \space with \space  item \space i \\$
+$$ q_i^* = \sqrt \frac {2 \cdot de_i \cdot c_i^{or}} {pr_i \cdot h}$$
+$$ \frac {de_i}{q_i}=Order\space frequency \space for \space item \space i$$
+$k= \{ \frac {de_1}{q_1},...,\frac {de_n}{q_n} \}$ number of unique ordering frequency
+
+e.g there are 62 items assuming there are $k=8$ unique ordering frequency that is item 1 and item 7 can have the same ordering frequency.
+$$\sum_{i=1}^{m=k} \frac {de_i}{q_i}\cdot c^{-or}+ \sum_{i=1}^{m=62} \frac {de_i}{q_i}\cdot c^{or}$$
+
+$$ min \rightarrow \sum_{i=1}^{m=62} \frac {q_i}{2} \cdot h \cdot pr_i +  \sum_{i=1}^{m=k} \frac {de_i}{q_i}\cdot c^{-or}+ \sum_{i=1}^{m=62} \frac {de_i}{q_i}\cdot c^{or}$$
+Subject to:
+$$\sum_{i=1}^{n=62} q_i \cdot \frac {b_{i(-sorting)} \cdot b_{i(sorting)}}{rack_{length}} \le rack_{Total_{width}} $$
+
+
+```{r}
+#tinytex::install_tinytex()
+tinytex:::is_tinytex()
+```
 
 
