@@ -241,22 +241,83 @@ dei <- product_data$demand_per_year
 h<-0.10
 box_cost <- product_data$box_cost #pri
 
+# objective function --> I dropped the 1500*62 as it is not decision relevant
+obj.fun <- function(q, d= dei, c.or = cori, c.h = h*box_cost  ) (sum((dei/q)*c.or)+ sum(c.h*(q/2)))
+# benchmarks
+obj.fun(max(product_data$eoq))
+obj.fun(min(product_data$eoq))
+# constraint function --> also contains the ceiling of lanes and a sum was missing
+const.fun <- function(q, bns = product_data$b_not_sorting, bs = product_data$b_sorting, rl = rack_length) {
+  sum(bs * ceiling( bns * q / rl))
+  }
+
+const.fun(max(product_data$eoq))
+const.fun(min(product_data$eoq))
+# try to figure out a freasible starting solution
+const.fun(min(product_data$eoq)/10) -  rack_total_width
+
 qopt <- OP(
-  objective = F_objective(F=function(q) ((1500*62)+sum((dei/q)*cori)+ (h*sum((q/2)*box_cost)))
-,n=length(product_data$`material ID`)),
-types = rep("C",length(product_data$`material ID`)),
-bounds = V_bound(ub= product_data$eoq,lb= rep(1, length(product_data$`material ID`))),
-constraints = F_constraint(F=function(q) q*((b_not_sorting*b_sorting)/rack_length),
-dir="<=",
-rhs = rack_total_width)
+  objective = F_objective(F=obj.fun ,n=n),
+  types = rep("C",n),
+  bounds = V_bound(ub= rep(max(product_data$eoq),n) , lb= rep(1, n)),
+  constraints = F_constraint(F=const.fun,
+                             dir="<=",
+                             rhs = rack_total_width)
 )
 
-c(numeric(length(product_data$`material ID`)))
-?ROI_solve()
-#solve the problem
-sol.const <- ROI_solve(qopt,start=c(numeric(length(product_data$`material ID`))),solver = "alabama")
+# solve the problem with appropriate starting vlaue and proper solver
+?ROI_solve
+min(product_data$eoq) #173
+
+rack_total_width #56000
+
+#This shows that minimum EOQ is too big and therefore will not meet the rack space constraint.
+const.fun(min(product_data$eoq))#366272
+
+const.fun(min(product_data$eoq)/8)# 61428  still > 56000
+
+const.fun(min(product_data$eoq)/8.7)#52716 < 56000
+
+const.fun(round(min(product_data$eoq)/10))# 52716 < 56000
+round(min(product_data$eoq)/10) #17.3
+
+
+```
+
+We will use min(product_data$eoq)/10 as our starting value because it seemed as the closest value to 56,000 which is the capacity
+```{r}
+copt_sol <- ROI_solve(qopt, start = rep(min(product_data$eoq)/10,n), solver = "alabama" )
+# always check whether the algorithm converged
+copt_sol# The objective value is: 1.313850e+05
+# solution
+copt_sol$solution #vector of optimal Quantity that meets the space constraints and minimizes the Obj function.
+round(copt_sol$solution)
+copt_sol$objval #131385
+
+#########################################
+# Now you need to fine tune the results 
+# --> there are rounding issues -> exactly determining the lane configuration per shelf level
+# --> idea to coping with the common ordering cost
 
 
 
 ```
+
+
+```{r}
+const.fun(copt_sol$solution)#55884
+const.fun(round(copt_sol$solution))#55686
+
+#check obj function
+
+obj.fun(copt_sol$solution)#131385
+obj.fun(round(copt_sol$solution))#132096.3  rounded q values
+
+
+
+```
+
+## Joint Ordering (JO)
+
+
 
