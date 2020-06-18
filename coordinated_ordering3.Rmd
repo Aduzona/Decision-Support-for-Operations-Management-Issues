@@ -328,8 +328,17 @@ $$ q_i^* = \sqrt \frac {2 \cdot de_i \cdot c_i^{or}} {pr_i \cdot h}$$
 $$ \frac {de_i}{q_i}=Order\space frequency \space for \space item \space i$$
 $k= \{ \frac {de_1}{q_1},...,\frac {de_n}{q_n} \}$ number of unique ordering frequency
 
-e.g there are 62 items assuming there are $k=8$ unique ordering frequency that is item 1 and item 7 can have the same ordering frequency.
-$$\sum_{i=1}^{m=k} \frac {de_i}{q_i}\cdot c^{-or}+ \sum_{i=1}^{m=62} \frac {de_i}{q_i}\cdot c^{or}$$
+$\frac {q_i}{de_i}= Time \space Cycle$ duration of time a part $i$ takes before it finish
+The writting below means at any point in time, there is a certain cost associated with part $i$
+$$c_i^{-or} \div \frac {q_i}{de_i} == c_i^{-or} \cdot \frac {de_i}{q_i} $$
+
+e.g there are 62 items assuming there are $k=8$ unique ordering frequency e.g in this 8 unique ordering frequencies item 1 and item 7 can have the same ordering frequency.
+$$\sum_{i=1}^{m=k} \frac {de_i}{q_i}\cdot c^{-or}$$
+
+When placing an order for part $i$, ordering cost $c_i^{or}$ have to be paid this means that $c_i^{or}$ is associated for every 62 items. Therefore $\frac {de_i}{q_i}$  which is the ordering frequency for part $i$ denote the number of times an order is placed.
+  
+
+$$ \sum_{i=1}^{m=62} \frac {de_i}{q_i}\cdot c^{or}$$
 
 $$ min \rightarrow \sum_{i=1}^{m=62} \frac {q_i}{2} \cdot h \cdot pr_i +  \sum_{i=1}^{m=k} \frac {de_i}{q_i}\cdot c^{-or}+ \sum_{i=1}^{m=62} \frac {de_i}{q_i}\cdot c^{or}$$
 Subject to:
