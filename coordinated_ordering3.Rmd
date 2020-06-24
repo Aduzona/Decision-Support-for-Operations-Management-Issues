@@ -351,3 +351,4 @@ tinytex:::is_tinytex()
 ```
 
 
+$$ min \rightarrow \sum_{i=1}^{m=62} \frac {q_i}{2} \cdot c_i^{sh} +  \sum_{i=1}^{m=62} \frac {de_i}{q_i}\cdot m_i \cdot c^{-or}+ \sum_{i=1}^{m=62} \frac {de_i}{q_i}\cdot c_i^{or}$$
