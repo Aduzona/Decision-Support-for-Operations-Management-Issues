@@ -465,7 +465,12 @@ for(j in 1: length(box_data$`box ID`)){
 }
 
 product_data$b_sorting &lt;- b_sorting 
-product_data$b_not_sorting &lt;- b_not_sorting
+product_data$b_sorting</code></pre>
+<pre><code>##  [1] 198 198 396 396 594 596 596 596 596 596 596 596 596 594 594 594 594 594 594
+## [20] 594 594 594 594 594 594 594 594 594 594 594 594 594 594 594 594 396 396 396
+## [39] 396 396 396 396 396 396 396 396 396 396 198 198 198 198 198 198 198 198 198
+## [58] 198 198 198 594 594</code></pre>
+<pre class="r"><code>product_data$b_not_sorting &lt;- b_not_sorting
 
 lane.min &lt;- ceiling(product_data$eoq.min * product_data$b_not_sorting / rack_length)
 lane.max &lt;- ceiling(product_data$eoq.max * product_data$b_not_sorting / rack_length)
@@ -1427,8 +1432,8 @@ copt_sol2 #5.671162e+04</code></pre>
 ## [49] 6.720508 6.293368 8.190459 6.592474 6.877702 6.789620 8.727140 9.326039
 ## [57] 7.924437 8.204295 9.738636 9.193840 9.691096 9.761625</code></pre>
 <p>–&gt; You should integrate the shelf capacity constraint –&gt; I also recommmend to stick with the basic period approach</p>
-<p>This is formally defined as <span class="math display">\[ \sum_{i=1}^n b_i \cdot \left\lceil\frac{b^{-1}_i \cdot q_i}{rl} \right \rceil \leq \text{tot_rack_width}\]</span> Thus, with the substitution above, the left-hand side changes to <span class="math display">\[ \sum_{i=1}^n b_i \cdot \left\lceil\frac{b^{-1}_i \cdot T_i \cdot y_i}{rl} \right \rceil = \sum_{i=1}^n b_i \cdot \left\lceil\frac{b^{-1}_i \cdot m_i \cdot B \cdot y_i}{rl} \right \rceil\]</span></p>
-<p>Thus, you can change the constraint function quite easily</p>
+<p>This is formally defined as <span class="math display">\[ \sum_{i=1}^n b_i \cdot \left\lceil\frac{b^{-1}_i \cdot q_i}{rl} \right \rceil \leq \text{tot_rack_width}\]</span> Thus, with the substitution above, the left-hand side changes to <span class="math display">\[ \sum_{i=1}^n b_i \cdot \left\lceil\frac{b^{-1}_i \cdot T_i \cdot y_i}{rl} \right \rceil = \sum_{i=1}^n b_i \cdot \left\lceil\frac{b^{-1}_i \cdot m_i \cdot B \cdot y_i}{rl} \right \rceil\]</span> integrating the function with respect to m.</p>
+<p><span class="math display">\[f(m) =\sum_{i=1}^n b_i \cdot \left\lceil\frac{b^{-1}_i \cdot m_i^2 \cdot B \cdot y_i}{2\cdot rl} \right \rceil \]</span> Thus, you can change the constraint function quite easily</p>
 <pre class="r"><code>const.fun2 &lt;- function(m, B = B.start, y= dei, bns = product_data$b_not_sorting, bs = product_data$b_sorting, rl = rack_length) {
   sum(bs * ceiling( bns * m*B*y / rl))
   }</code></pre>
@@ -1448,6 +1453,8 @@ jrp.obj.fun(m= rep(1, 62))</code></pre>
 <pre><code>## [1] 637548.5</code></pre>
 <pre class="r"><code>const.fun2(m= rep(1, 62))</code></pre>
 <pre><code>## [1] 30710</code></pre>
+<pre class="r"><code>?OP</code></pre>
+<pre><code>## starting httpd help server ... done</code></pre>
 <pre class="r"><code>qopt3 &lt;- OP(
   objective = F_objective(F=jrp.obj.fun ,n=n),
   # now integer decision variables
@@ -1475,8 +1482,14 @@ copt_sol3 #2.995570e+05</code></pre>
 ## [57] 19.982857 14.488533 20.823118 16.200768 18.792868 10.526122</code></pre>
 <pre class="r"><code>jrp.obj.fun(m= copt_sol3$solution) #299557</code></pre>
 <pre><code>## [1] 299557</code></pre>
-<pre class="r"><code>const.fun2(m= copt_sol3$solution) &lt;= rack_total_width</code></pre>
+<pre class="r"><code>const.fun2(m= copt_sol3$solution) &lt;= rack_total_width # True</code></pre>
 <pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code># round all m value to upper floor ensuring that demand is met.
+
+jrp.obj.fun(round(copt_sol3$solution),2)</code></pre>
+<pre><code>## [1] 88489.49</code></pre>
+<pre class="r"><code>const.fun2(round(copt_sol3$solution,2)) &lt;= rack_total_width # rounding to 2 decimal place violates the contraint, also rounding to nearest whole number violates the constraint. or putting </code></pre>
+<pre><code>## [1] FALSE</code></pre>
 <p>Now you should have some good starting solution. Still you need to round the solution. Afterwards, you have to find a layout scheme such that a precise shelf layout results.</p>
 </div>
 </div>
@@ -1486,43 +1499,75 @@ copt_sol3 #2.995570e+05</code></pre>
 <div id="section" class="section level1">
 <h1>————————————————-</h1>
 <p>In Each runway, only one part should be stored. Thereby, the width of a runway can be adapted to width of the box type which corresponds to the part assigned to the runway.</p>
-<p>, this means total of 62 widths in a pattern and these widths are made up of box id sorting.</p>
-<pre class="r"><code>df &lt;- data.frame(
-  Box_sorting = t(product_data$b_sorting))
-df</code></pre>
-<pre><code>##   Box_sorting.1 Box_sorting.2 Box_sorting.3 Box_sorting.4 Box_sorting.5
-## 1           198           198           396           396           594
-##   Box_sorting.6 Box_sorting.7 Box_sorting.8 Box_sorting.9 Box_sorting.10
-## 1           596           596           596           596            596
-##   Box_sorting.11 Box_sorting.12 Box_sorting.13 Box_sorting.14 Box_sorting.15
-## 1            596            596            596            594            594
-##   Box_sorting.16 Box_sorting.17 Box_sorting.18 Box_sorting.19 Box_sorting.20
-## 1            594            594            594            594            594
-##   Box_sorting.21 Box_sorting.22 Box_sorting.23 Box_sorting.24 Box_sorting.25
-## 1            594            594            594            594            594
-##   Box_sorting.26 Box_sorting.27 Box_sorting.28 Box_sorting.29 Box_sorting.30
-## 1            594            594            594            594            594
-##   Box_sorting.31 Box_sorting.32 Box_sorting.33 Box_sorting.34 Box_sorting.35
-## 1            594            594            594            594            594
-##   Box_sorting.36 Box_sorting.37 Box_sorting.38 Box_sorting.39 Box_sorting.40
-## 1            396            396            396            396            396
-##   Box_sorting.41 Box_sorting.42 Box_sorting.43 Box_sorting.44 Box_sorting.45
-## 1            396            396            396            396            396
-##   Box_sorting.46 Box_sorting.47 Box_sorting.48 Box_sorting.49 Box_sorting.50
-## 1            396            396            396            198            198
-##   Box_sorting.51 Box_sorting.52 Box_sorting.53 Box_sorting.54 Box_sorting.55
-## 1            198            198            198            198            198
-##   Box_sorting.56 Box_sorting.57 Box_sorting.58 Box_sorting.59 Box_sorting.60
-## 1            198            198            198            198            198
-##   Box_sorting.61 Box_sorting.62
-## 1            594            594</code></pre>
-<pre class="r"><code>#some combinations of Box_sorting forms different patterns</code></pre>
-<p><span class="math inline">\(rack_{length}=6000 \\\)</span> 1. Number of boxes in a lane: <span class="math display">\[n_i=\frac {rl}{b_i^{-1}}=\frac {6000}{297}=20.20=20boxes\]</span> 2. How many lanes part <span class="math inline">\(i\)</span> will occupy if you order some number of boxes <span class="math display">\[lane_i=\frac {q_i}{n_i}\\lane_i=q_i \cdot \frac {b_i^{-1}}{rl}=214 \cdot \frac {297}{6000}=10.593= 11 \space lanes  \\ lane_i=  m_i \cdot B \cdot dei_i \cdot \frac {b_i^{-1}}{rl} \]</span> <span class="math inline">\(rw= rack \space width\)</span></p>
-<p><span class="math inline">\(\sum_{i=1}^{n=62} b_i=28330\)</span> and <span class="math inline">\(rw=1750\)</span> all in mm, this means that</p>
+<p>, this means <span class="math inline">\(\le\)</span> 62 widths in a pattern and these widths are made up of box id sorting.</p>
+<ul>
+<li><em>Something for Excel:</em></li>
+</ul>
+<p>The aim of this is to know the maximum number of lanes required for item <span class="math inline">\(i\)</span> to fulfull demand,</p>
+<ol style="list-style-type: decimal">
+<li>Space ratio <span class="math inline">\(sr\)</span>: The space required for each item <span class="math inline">\(i\)</span> compared to the total space available for storage in mm. This is product of demand, box sorting and box_not_sorting over sum product for all items</li>
+</ol>
+<p><span class="math display">\[ sr_i= \frac {dei_i \cdot b_i \cdot b_i^{-1}}{\sum_{i=1}^{n=62} dei_i \cdot b_i \cdot b_i^{-1}}  \cdot rl \cdot tot\_rack\_width\]</span></p>
+<ol start="2" style="list-style-type: decimal">
+<li>Lane per item <span class="math inline">\(lpi\)</span>: This shows how many lanes each item have need regardless of capacity.</li>
+</ol>
+<p><span class="math display">\[lpi_i= \frac {sr_i}{b_i \cdot rl}\]</span></p>
+<pre class="r"><code>#RATIO OF SPACE FOR EACH ITEM
+space.ratio &lt;- numeric(length(product_data$demand_per_year))
+
+# space ratio in millileters, proportion of space
+for(item in 1:length(product_data$demand_per_year)){
+  space.ratio[item] &lt;-((product_data$demand_per_year[item]*product_data$b_sorting[item]*product_data$b_not_sorting[item])/sum(product_data$demand_per_year*product_data$b_sorting*product_data$b_not_sorting)) * rack_length * rack_total_width
+  
+}
+
+lanes.per.item &lt;- numeric(length(product_data$demand_per_year))
+#how many lanes in a rectangle
+for(item in 1:length(product_data$demand_per_year)){
+  
+  lanes.per.item[item]&lt;- space.ratio[item]/(product_data$b_sorting[item] *rack_length)
+}
+
+lanes.item.summary &lt;- ceiling(lanes.per.item)
+
+
+#Generate patterns, done in Excel
+
+patterns &lt;- read_excel(&quot;Cutting_Stock.xlsx&quot;,sheet = &quot;Pattern&quot;)
+
+unique(patterns)</code></pre>
+<pre><code>## # A tibble: 110 x 63
+##    Pattern   `1`   `2`   `3`   `4`   `5`   `6`   `7`   `8`   `9`  `10`  `11`
+##      &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+##  1       1     0     0     1     0     2     0     0     0     0     0     0
+##  2       2     0     0     0     1     1     1     0     0     0     0     0
+##  3       3     0     0     0     0     0     0     2     0     0     0     0
+##  4       4     0     0     0     0     0     0     2     0     0     0     0
+##  5       5     0     0     0     0     0     0     1     0     0     0     0
+##  6       6     0     0     0     0     0     0     0     2     0     0     0
+##  7       7     0     0     0     0     0     0     0     2     0     0     0
+##  8       8     0     0     0     0     0     0     0     1     0     0     0
+##  9       9     0     0     0     0     0     0     0     0     2     0     0
+## 10      10     0     0     0     0     0     0     0     0     0     2     0
+## # ... with 100 more rows, and 51 more variables: `12` &lt;dbl&gt;, `13` &lt;dbl&gt;,
+## #   `14` &lt;dbl&gt;, `15` &lt;dbl&gt;, `16` &lt;dbl&gt;, `17` &lt;dbl&gt;, `18` &lt;dbl&gt;, `19` &lt;dbl&gt;,
+## #   `20` &lt;dbl&gt;, `21` &lt;dbl&gt;, `22` &lt;dbl&gt;, `23` &lt;dbl&gt;, `24` &lt;dbl&gt;, `25` &lt;dbl&gt;,
+## #   `26` &lt;dbl&gt;, `27` &lt;dbl&gt;, `28` &lt;dbl&gt;, `29` &lt;dbl&gt;, `30` &lt;dbl&gt;, `31` &lt;dbl&gt;,
+## #   `32` &lt;dbl&gt;, `33` &lt;dbl&gt;, `34` &lt;dbl&gt;, `35` &lt;dbl&gt;, `36` &lt;dbl&gt;, `37` &lt;dbl&gt;,
+## #   `38` &lt;dbl&gt;, `39` &lt;dbl&gt;, `40` &lt;dbl&gt;, `41` &lt;dbl&gt;, `42` &lt;dbl&gt;, `43` &lt;dbl&gt;,
+## #   `44` &lt;dbl&gt;, `45` &lt;dbl&gt;, `46` &lt;dbl&gt;, `47` &lt;dbl&gt;, `48` &lt;dbl&gt;, `49` &lt;dbl&gt;,
+## #   `50` &lt;dbl&gt;, `51` &lt;dbl&gt;, `52` &lt;dbl&gt;, `53` &lt;dbl&gt;, `54` &lt;dbl&gt;, `55` &lt;dbl&gt;,
+## #   `56` &lt;dbl&gt;, `57` &lt;dbl&gt;, `58` &lt;dbl&gt;, `59` &lt;dbl&gt;, `60` &lt;dbl&gt;, `61` &lt;dbl&gt;,
+## #   `62` &lt;dbl&gt;</code></pre>
+<ul>
+<li><em>Lane formulation</em></li>
+</ul>
+<p><span class="math inline">\(rl=6000 \\\)</span> rack length 1. Number of boxes in a lane: <span class="math display">\[n_i=\frac {rl}{b_i^{-1}}=\frac {6000}{297}=20.20=20boxes\]</span> 2. How many lanes part <span class="math inline">\(i\)</span> will occupy if you order some number of boxes <span class="math display">\[lane_i=\frac {q_i}{n_i}\\lane_i=q_i \cdot \frac {b_i^{-1}}{rl}=214 \cdot \frac {297}{6000}=10.593= 11 \space lanes  \\ lane_i=  m_i \cdot B \cdot dei_i \cdot \frac {b_i^{-1}}{rl} \]</span></p>
+<p>The table below is same as the last table displayed in R code above with showing <span class="math inline">\(k\)</span> patterns and <span class="math inline">\(i\)</span> sorting or lane with $ lane_{ik}= m_{ik} B dei_{ik} $</p>
 <table>
 <thead>
 <tr class="header">
-<th><span class="math inline">\(k\)</span> <span class="math inline">\(i\)</span> <span class="math inline">\(p_k=\)</span>Pattern</th>
+<th><span class="math inline">\(p_k=\)</span>Pattern</th>
 <th><span class="math inline">\(b_i=\{b_1, b_2,...,b_{62} \}\)</span></th>
 <th><span class="math inline">\(rw=\)</span> Rack Width</th>
 </tr>
@@ -1550,23 +1595,64 @@ df</code></pre>
 </tr>
 </tbody>
 </table>
-<ol style="list-style-type: decimal">
-<li><p>Sum product of lane for product <span class="math inline">\(i\)</span> in pattern <span class="math inline">\(k\)</span> and box sorting<span class="math inline">\(b_i\)</span> value offer product <span class="math inline">\(i\)</span> in pattern <span class="math inline">\(k\)</span> and $y_{ik} $columns of <span class="math inline">\(b_i\)</span> part of the pattern(0,1) or not.</p></li>
-<li><p>Sum Product of quantity for pattern <span class="math inline">\(k\)</span> for part <span class="math inline">\(i\)</span> and box non sorting for pattern <span class="math inline">\(k\)</span> for part <span class="math inline">\(i\)</span>.</p></li>
+<ul>
+<li><em>Equation 1: level constraint</em></li>
+</ul>
+<p>calculate for each level, what types of lanes ahould be assigned, or be built, This is level contraint such that each pattern should be less than or equal to rack width, like putting lanes in a pattern. Sum product of lane for product <span class="math inline">\(i\)</span> in pattern <span class="math inline">\(k\)</span> and lane widht <span class="math inline">\(b_i\)</span> value offer product <span class="math inline">\(i\)</span> in pattern <span class="math inline">\(k\)</span> and $y_{ik} $denotes if a lane is chosen or not.</p>
+<ol start="2" style="list-style-type: decimal">
+<li><ul>
+<li><em>Equation 2: Demand constraint</em></li>
+</ul></li>
 </ol>
-<p><span class="math display">\[\sum_{k=1}^{p_k} \sum_{i=1}^{n=62} lane_{ik} \cdot b_{ik} \cdot y_{ik} \le  rw  \qquad  \\ \sum_{i=1}^{n=62} \sum_{k=1}^{p_k} q_{ki} \cdot b_{ki}^{-1} \ge dei_i \\ y \in \{0,1\}\]</span> The above can be also be reformulated to:</p>
-<p><span class="math display">\[ \sum_{i=1}^{n=62} lane_{ik} \cdot b_{ik} \cdot y_{ik} \le  rw  \qquad  \forall k=1,...,p_k\\ \sum_{i=1}^{n=62} \sum_{k=1}^{p_k} q_{ki} \cdot b_{ki}^{-1} \ge dei_i \\ y \in \{0,1\}\]</span></p>
+<p>Ensures that any combination of patterns picked by equation (1) meets demand.That is pick patterns that meets demand. Summation of quantity for pattern <span class="math inline">\(k\)</span> for part <span class="math inline">\(i\)</span>.</p>
+<p><span class="math display">\[\sum_{k=1}^{p_k} \sum_{i=1}^{n=62} lane_{ik} \cdot b_{ik} \cdot y_{ik} \le  rw  \qquad  \\ \sum_{i=1}^{n=62} \sum_{k=1}^{p_k} q_{ki}  \ge dei_i \\ y \in \{0,1\}\]</span> The above can be also be reformulated to:</p>
+<p><span class="math display">\[ \sum_{i=1}^{n=62} lane_{ik} \cdot b_{ik} \cdot y_{ik} \le  rw  \qquad  \forall k=1,...,p_k\\ \sum_{i=1}^{n=62} \sum_{k=1}^{p_k} q_{ki}  \ge dei_i \\ y \in \{0,1\}\]</span></p>
 </div>
 <div id="total-formulation" class="section level1">
 <h1>Total Formulation:</h1>
 <p><span class="math display">\[ \min \rightarrow \frac {c_o^{or}}{B}+ \sum_{i=1}^n (\frac {c_i^{or}}{m_i \cdot B}+H_i \cdot m_i \cdot B)\]</span> Subject to:</p>
-<p><span class="math display">\[ \sum_{i=1}^{n=62} m_{ik} \cdot B \cdot dei_{ik} \cdot \frac {b_{ik}^{-1}}{rl} \cdot b_{ik} \cdot y_{ik} \le  rw  \qquad  \forall k=1,...,p_k\\ \sum_{i=1}^{n=62} \sum_{k=1}^{p_k} q_{ki} \cdot b_{ki}^{-1} \ge dei_i \\ y \in \{0,1\}\]</span></p>
-<pre class="r"><code>sum(product_data$b_sorting)</code></pre>
-<pre><code>## [1] 28330</code></pre>
-<pre class="r"><code>sum(product_data$b_sorting) &gt; rack_width #true</code></pre>
-<pre><code>## [1] TRUE</code></pre>
-<pre class="r"><code>rack_width</code></pre>
-<pre><code>## [1] 1750</code></pre>
+<p><span class="math display">\[ \sum_{i=1}^{n=62} m_{ik} \cdot B \cdot dei_{ik} \cdot \frac {b_{ik}^{-1}}{rl} \cdot b_{ik} \cdot y_{ik} \le  rw  \qquad  \forall k=1,...,p_k  \space (1)\\ \sum_{i=1}^{n=62} \sum_{k=1}^{p_k} m_{ik} \cdot B \cdot dei_{ik} \ge dei_i \space (2) \\ y \in \{0,1\}\]</span></p>
+<p>We constraint number of patterns to be 32 reperesenting 32 levels.</p>
+<pre class="r"><code>jrp.obj.fun(m= copt_sol3$solution)</code></pre>
+<pre><code>## [1] 299557</code></pre>
+<pre class="r"><code>dvec &lt;- product_data$demand_per_year
+
+#level constraint
+level.const &lt;- function(y,m=round(copt_sol3$solution) , B = B.start,bns=b_not_sorting,bs=b_sorting,  dvec=product_data$demand_per_year,rl=rack_length){
+  for (k in 1:32) {
+    for(i in 1:62){
+      m[k,i]*B*dvec[k,i]*(bns[k,i]/rl)*bs[k,i]*y[k,i]
+    }
+    
+  }
+  
+}
+
+# y is optional since k= 32 which is equivalent to 32 levels.
+demand.const &lt;- function(y,m=round(copt_sol3$solution) , B = B.start,bs=b_sorting,  dvec=product_data$demand_per_year){
+  
+  for (i in 1:62) {
+    for (k in 1:32) {
+       m[k,i]*B*dvec[k,i]*y[k,i]
+    }
+  }
+  
+}
+
+
+qopt4 &lt;- OP(
+  objective = F_objective(F=jrp.obj.fun ,n=n),
+  # now integer decision variables
+  types = rep(&quot;C&quot;,n),
+  bounds = V_bound(li = 1:n, ui = 1:n, ub= rep(50, n) , lb= rep(1, n)),
+  constraints = F_constraint(F=level.const,
+                             dir=&quot;&lt;=&quot;,
+                             rhs = rack_width)
+  
+)
+
+#copt_sol4 &lt;- ROI_solve(qopt4, start = T.feas/B.start , solver = &quot;alabama&quot;)
+# Error in m[k, i] : incorrect number of dimensions</code></pre>
 </div>
 
 

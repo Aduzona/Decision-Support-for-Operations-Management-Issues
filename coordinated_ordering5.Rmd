@@ -102,6 +102,7 @@ for(j in 1: length(box_data$`box ID`)){
 }
 
 product_data$b_sorting <- b_sorting 
+product_data$b_sorting
 product_data$b_not_sorting <- b_not_sorting
 
 lane.min <- ceiling(product_data$eoq.min * product_data$b_not_sorting / rack_length)
@@ -330,7 +331,9 @@ This is formally defined as
 $$ \sum_{i=1}^n b_i \cdot \left\lceil\frac{b^{-1}_i \cdot q_i}{rl} \right \rceil \leq \text{tot_rack_width}$$
 Thus, with the substitution above, the left-hand side changes to
 $$ \sum_{i=1}^n b_i \cdot \left\lceil\frac{b^{-1}_i \cdot T_i \cdot y_i}{rl} \right \rceil = \sum_{i=1}^n b_i \cdot \left\lceil\frac{b^{-1}_i \cdot m_i \cdot B \cdot y_i}{rl} \right \rceil$$
+integrating the function with respect to m.
 
+$$f(m) =\sum_{i=1}^n b_i \cdot \left\lceil\frac{b^{-1}_i \cdot m_i^2 \cdot B \cdot y_i}{2\cdot rl} \right \rceil $$
 Thus, you can change the constraint function quite easily
 
 ```{r}
@@ -355,7 +358,7 @@ B.start <- min(T.feas)
 jrp.obj.fun <- function(m , B = B.start, cor = c.or, Hvec = H.vec, cor0 = c.or0) cor0/B + sum(cor/B/m) + sum(Hvec*B*m)
 jrp.obj.fun(m= rep(1, 62))
 const.fun2(m= rep(1, 62))
-
+?OP
 qopt3 <- OP(
   objective = F_objective(F=jrp.obj.fun ,n=n),
   # now integer decision variables
@@ -373,8 +376,12 @@ copt_sol3 #2.995570e+05
 copt_sol3$solution
 
 jrp.obj.fun(m= copt_sol3$solution) #299557
-const.fun2(m= copt_sol3$solution) <= rack_total_width
+const.fun2(m= copt_sol3$solution) <= rack_total_width # True
 
+# round all m value to upper floor ensuring that demand is met.
+
+jrp.obj.fun(round(copt_sol3$solution),2)
+const.fun2(round(copt_sol3$solution,2)) <= rack_total_width # rounding to 2 decimal place violates the contraint, also rounding to nearest whole number violates the constraint. or putting 
 ```
 
 Now you should have some good starting solution. Still you need to round the solution. 
@@ -385,54 +392,134 @@ Afterwards, you have to find a layout scheme such that a precise shelf layout re
 
 In Each runway, only one part should be stored. Thereby, the width of a runway can be adapted to width of the box type which corresponds to the part assigned to the runway.
 
-, this means total of 62 widths in a pattern and these widths are made up of box id sorting. 
+, this means $\le$ 62 widths in a pattern and these widths are made up of box id sorting. 
 
+
+- *Something for Excel:*
+
+The aim of this is to know the maximum number of lanes required for item $i$ to fulfull demand, 
+
+1. Space ratio $sr$:
+The space required for each item $i$ compared to the total space available for storage in mm.
+This is product of demand, box sorting and box_not_sorting over sum product for all items
+
+$$ sr_i= \frac {dei_i \cdot b_i \cdot b_i^{-1}}{\sum_{i=1}^{n=62} dei_i \cdot b_i \cdot b_i^{-1}}  \cdot rl \cdot tot\_rack\_width$$
+
+2. Lane per item $lpi$:
+This shows how many lanes each item have need regardless of capacity.  
+
+$$lpi_i= \frac {sr_i}{b_i \cdot rl}$$
 ```{r}
-df <- data.frame(
-  Box_sorting = t(product_data$b_sorting))
-df
+#RATIO OF SPACE FOR EACH ITEM
+space.ratio <- numeric(length(product_data$demand_per_year))
 
-#some combinations of Box_sorting forms different patterns
+# space ratio in millileters, proportion of space
+for(item in 1:length(product_data$demand_per_year)){
+  space.ratio[item] <-((product_data$demand_per_year[item]*product_data$b_sorting[item]*product_data$b_not_sorting[item])/sum(product_data$demand_per_year*product_data$b_sorting*product_data$b_not_sorting)) * rack_length * rack_total_width
+  
+}
+
+lanes.per.item <- numeric(length(product_data$demand_per_year))
+#how many lanes in a rectangle
+for(item in 1:length(product_data$demand_per_year)){
+  
+  lanes.per.item[item]<- space.ratio[item]/(product_data$b_sorting[item] *rack_length)
+}
+
+lanes.item.summary <- ceiling(lanes.per.item)
+
+
+#Generate patterns, done in Excel
+
+patterns <- read_excel("Cutting_Stock.xlsx",sheet = "Pattern")
+
+unique(patterns)
+
 ```
-$rack_{length}=6000 \\$
+
+- *Lane formulation*
+
+$rl=6000 \\$ rack length
 1. Number of boxes in a lane:
 $$n_i=\frac {rl}{b_i^{-1}}=\frac {6000}{297}=20.20=20boxes$$
 2. How many lanes part $i$ will occupy if you order some number of boxes
 $$lane_i=\frac {q_i}{n_i}\\lane_i=q_i \cdot \frac {b_i^{-1}}{rl}=214 \cdot \frac {297}{6000}=10.593= 11 \space lanes  \\ lane_i=  m_i \cdot B \cdot dei_i \cdot \frac {b_i^{-1}}{rl} $$
-$rw= rack \space width$
 
-$\sum_{i=1}^{n=62} b_i=28330$ and $rw=1750$ all in mm, this means that
-
+The table below is same as the last table displayed in R code above with showing $k$ patterns and $i$ sorting or lane with $ lane_{ik}=  m_{ik} \cdot B \cdot dei_{ik} \cdot \frac {b_{ik}^{-1}}{rl}$ 
 
 
-|$k$\ $i$ $p_k=$Pattern |$b_i=\{b_1, b_2,...,b_{62} \}$|$rw=$ Rack Width|
+|$p_k=$Pattern |$b_i=\{b_1, b_2,...,b_{62} \}$|$rw=$ Rack Width|
 |---------------|----------------------------|----------|  
 |1 | $\{lane_{11},lane_{12},lane_{1,n}\}$ | 1750|
 |2 | $\{lane_{21},lane_{22},lane_{2,n}\}$ | 1750|
 |3 | $\{lane_{31},lane_{32},lane_{3,n}\}$| 1750|
 |k | $\{lane_{k1},lane_{k2},lane_{k,n}\}$| 1750|
 
-1. Sum product of lane for product $i$ in pattern $k$ and box sorting$b_i$ value offer product $i$ in pattern $k$ and $y_{ik} $columns of $b_i$ part of the pattern(0,1) or not.
+- *Equation 1: level constraint*
 
-2. Sum Product of quantity for pattern $k$ for part $i$ and box non sorting for pattern $k$ for part $i$.
+calculate for each level, what types of lanes ahould be assigned, or be built, This is level contraint such that each pattern should be less than or equal to rack width, like putting lanes in a pattern. Sum product of lane for product $i$ in pattern $k$ and lane widht $b_i$ value offer product $i$ in pattern $k$ and $y_{ik} $denotes if a lane is chosen or not.
 
-$$\sum_{k=1}^{p_k} \sum_{i=1}^{n=62} lane_{ik} \cdot b_{ik} \cdot y_{ik} \le  rw  \qquad  \\ \sum_{i=1}^{n=62} \sum_{k=1}^{p_k} q_{ki} \cdot b_{ki}^{-1} \ge dei_i \\ y \in \{0,1\}$$
+2. - *Equation 2: Demand constraint*
+
+Ensures that any combination of patterns picked by equation (1) meets demand.That is pick patterns that meets demand.
+Summation  of quantity for pattern $k$ for part $i$.
+
+
+$$\sum_{k=1}^{p_k} \sum_{i=1}^{n=62} lane_{ik} \cdot b_{ik} \cdot y_{ik} \le  rw  \qquad  \\ \sum_{i=1}^{n=62} \sum_{k=1}^{p_k} q_{ki}  \ge dei_i \\ y \in \{0,1\}$$
 The above can be also be reformulated to:
 
-$$ \sum_{i=1}^{n=62} lane_{ik} \cdot b_{ik} \cdot y_{ik} \le  rw  \qquad  \forall k=1,...,p_k\\ \sum_{i=1}^{n=62} \sum_{k=1}^{p_k} q_{ki} \cdot b_{ki}^{-1} \ge dei_i \\ y \in \{0,1\}$$
+$$ \sum_{i=1}^{n=62} lane_{ik} \cdot b_{ik} \cdot y_{ik} \le  rw  \qquad  \forall k=1,...,p_k\\ \sum_{i=1}^{n=62} \sum_{k=1}^{p_k} q_{ki}  \ge dei_i \\ y \in \{0,1\}$$
 
 # Total Formulation:
 
 $$ \min \rightarrow \frac {c_o^{or}}{B}+ \sum_{i=1}^n (\frac {c_i^{or}}{m_i \cdot B}+H_i \cdot m_i \cdot B)$$
 Subject to:
 
-$$ \sum_{i=1}^{n=62} m_{ik} \cdot B \cdot dei_{ik} \cdot \frac {b_{ik}^{-1}}{rl} \cdot b_{ik} \cdot y_{ik} \le  rw  \qquad  \forall k=1,...,p_k\\ \sum_{i=1}^{n=62} \sum_{k=1}^{p_k} q_{ki} \cdot b_{ki}^{-1} \ge dei_i \\ y \in \{0,1\}$$
+$$ \sum_{i=1}^{n=62} m_{ik} \cdot B \cdot dei_{ik} \cdot \frac {b_{ik}^{-1}}{rl} \cdot b_{ik} \cdot y_{ik} \le  rw  \qquad  \forall k=1,...,p_k  \space (1)\\ \sum_{i=1}^{n=62} \sum_{k=1}^{p_k} m_{ik} \cdot B \cdot dei_{ik} \ge dei_i \space (2) \\ y \in \{0,1\}$$
 
+We constraint number of patterns to be 32 reperesenting 32 levels.
 ```{r}
-sum(product_data$b_sorting)
-sum(product_data$b_sorting) > rack_width #true
+jrp.obj.fun(m= copt_sol3$solution)
 
-rack_width
+dvec <- product_data$demand_per_year
+
+#level constraint
+level.const <- function(y,m=round(copt_sol3$solution) , B = B.start,bns=b_not_sorting,bs=b_sorting,  dvec=product_data$demand_per_year,rl=rack_length){
+  for (k in 1:32) {
+    for(i in 1:62){
+      m[k,i]*B*dvec[k,i]*(bns[k,i]/rl)*bs[k,i]*y[k,i]
+    }
+    
+  }
+  
+}
+
+# y is optional since k= 32 which is equivalent to 32 levels.
+demand.const <- function(y,m=round(copt_sol3$solution) , B = B.start,bs=b_sorting,  dvec=product_data$demand_per_year){
+  
+  for (i in 1:62) {
+    for (k in 1:32) {
+       m[k,i]*B*dvec[k,i]*y[k,i]
+    }
+  }
+  
+}
+
+
+qopt4 <- OP(
+  objective = F_objective(F=jrp.obj.fun ,n=n),
+  # now integer decision variables
+  types = rep("C",n),
+  bounds = V_bound(li = 1:n, ui = 1:n, ub= rep(50, n) , lb= rep(1, n)),
+  constraints = F_constraint(F=level.const,
+                             dir="<=",
+                             rhs = rack_width)
+  
+)
+
+#copt_sol4 <- ROI_solve(qopt4, start = T.feas/B.start , solver = "alabama")
+# Error in m[k, i] : incorrect number of dimensions
+
 ```
 
 ```{r}
