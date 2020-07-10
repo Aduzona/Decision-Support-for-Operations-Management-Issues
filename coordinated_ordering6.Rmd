@@ -394,7 +394,7 @@ Afterwards, you have to find a layout scheme such that a precise shelf layout re
 As you rightly point out you need to calculate the number of lanes $l(q_i)$ required for each product given a certain order quantity $q_i$ (integer number of boxes):
 
 $$l(q_i) =\left\lceil \frac{q_i}{n_i} \right\rceil$$
-whereby $n_i$ is the number of boxes per lane dedicated to product $i$. I.e., $n_i = \left\lfloor \frac{rl}{b_i^{-1}} \right\rfloor$. Thus, for the solution of the JRP we have:
+whereby $n_i$ is the number of boxes per lane dedicated to product $i$. I.e., $$n_i = \left\lfloor \frac{rl}{b_i^{-1}} \right\rfloor$$. Thus, for the solution of the JRP we have:
 
 ```{r}
 l.start <- ceiling(q.start/floor(rack_length/product_data$b_not_sorting))
@@ -455,16 +455,16 @@ As each pattern has the same rest (see Excel file), the objective function is mo
 using Mixed Interger Linear Programming (MILP)
 
 $$\min \rightarrow \sum_{m=1}^{32}\sum_{k=1}^{9} x_{m,k}  \\ \sum_{m = 1}^{32}\sum_{k = 1}^9 x_{m,k} \cdot p_{k,j} \geq ld_j \quad \forall j \in \{200,400,600\} \quad (1) \\  \sum_{k = 1}^9 x_{m,k} \leq 1 \quad \forall m = 1,...,32 \quad (2) \\ x_{m,k} \in \{0,1\}$$
-M= 32 levels,K= 9 patterns $x_{m,k}$  consist of a vector of decision variables with $(M \cdot K)$ 288 elements $X= ( K_1-M1,K2-M1,..K9-M1,....K1-M32,K2-M32,..K9-M32)$. $J=3$ unique lane width.There are $ J+K= 33$ constraints. Thus the right hand ride vector $b=(\vec {ld_J},1_1,...1_{288})$. Correspondingly, the constraint matrix $A$ has dimension $291 \times 288$ and looks as follows:
+M= 32 levels,K= 9 patterns $x_{m,k}$  consist of a vector of decision variables with $(M \cdot K)$ 288 elements $X= ( K_1-M1,K2-M1,..K9-M1,....K1-M32,K2-M32,..K9-M32)$. $J=3$ unique lane width.There are $ J+K= 35$ constraints. Thus the right hand ride vector $b=(\vec {ld_J},1_1,...1_{32})$. Correspondingly, the constraint matrix $A$ has dimension $35 \times 288$ and looks as follows:
 
 let $J1=200, J2=400, J3=600$
 
 \begin{pmatrix} 
-... \\ $ P_{J1}$ \\ $P_{J2}$ \\ $P_{J3}$ \\ 1 \\ 2 \\ ... \\ 288
+... \\ $ P_{J1}$ \\ $P_{J2}$ \\ $P_{J3}$ \\ 1 \\ 2 \\ ... \\ 32
 \end{pmatrix}
 \quad
 \begin{pmatrix} 
-... \\ J1 \\ J2 \\ J3 \\ 1 \\ 2 \\ ... \\ 288
+... \\ J1 \\ J2 \\ J3 \\ 1 \\ 2 \\ ... \\ 32
 \end{pmatrix}
 \quad
 \begin{bmatrix} 
@@ -472,9 +472,9 @@ K1-M1 & K2-M1 & ...& K9-M1 & K1-M2 & K2-M2 & ...& K9-M2 & ... & K1-M32 & K2-M32 
 8 & 0 & ...& 1 & 8 & 0 & ... & 1 & ... & 8 & 0 &... & 1 \\
 ...\\
 ...\\
-1 & 0 & 0 & .... \\
-0 & 1 & 0 &....\\
-0 & 0 & 1 &... \\
+1 & 1 & ... & 1 & 0 & 0 & ...& 0 & ....& 0 & 0 & ... & 0 \\
+0 & 0 & ... & 0 & 1 & 1 & ...& 1 & ... & 0 & 0 & ... & 0\\
+0 & 0 & ... & 0 & 0 & 0 & ...& 0 & ....& 1 & 1 & ... & 1\\
 
 \end{bmatrix}
 
@@ -493,17 +493,19 @@ patterns        # matrix with dimensions (k,j)=(9,3)
 x.vec <- integer(n.m*n.k)
 #x.vec <- rep(1,n.m*n.k)
 
-b.vec <- c(ld,rep(1,n.m*n.k)) # right hand side vector 
+# c(17,16,7) replace this with ld, it will give a feasible solution but it will still assign 2 patterns to 1 level
+
+b.vec <- c(ld,rep(1,n.m)) # right hand side vector 
 
 #objective coeficients
 c.vec <- c(rep(1,(n.m*n.k)))
   
-const.vec <- c(rep(">=",length(ld)), rep("<=",(n.m*n.k))) # vector with constraint directions 
+const.vec <- c(rep(">=",length(ld)), rep("<=",(n.m))) # vector with constraint directions 
 
 vtype.vec <- rep("B",length(x.vec)) # vector with variable types ("B" binary ) 
 
 
-A.mat <- matrix(0, ncol = n.m*n.k, nrow = (3+n.m*n.k) )# initialize constraint matrix
+A.mat <- matrix(0, ncol = n.m*n.k, nrow = (3+n.m) )# initialize constraint matrix
 
 colnames(A.mat) <- c(apply(expand.grid(nam.K, nam.M), 1, paste, collapse="-"))
 
@@ -524,9 +526,9 @@ for (tuple.id in 1:3) {
 tuple.id <- 4
 
 
- for (i in 1:288) {
-  
-  A.mat[tuple.id,i]<- 1
+ for (m in 1:32) {
+   
+  A.mat[tuple.id,grepl(nam.M[m],colnames(A.mat))] <- 1
   
   tuple.id<- tuple.id + 1
   
@@ -536,7 +538,7 @@ tuple.id <- 4
 
 sol.levels <- Rglpk_solve_LP(obj = c.vec, mat = A.mat, dir = const.vec, rhs = b.vec, types = vtype.vec, control =list("verbose" = T) )
 
-#sol.levels$solution   # OPTIMAL SOLUTION FOUND shows a matrix of zeros and 1
+sol.levels$solution   # PROBLEM HAS NO FEASIBLE SOLUTION displays only zeros
 
 
 ```
@@ -546,10 +548,7 @@ Pattern assignment are displayed below also note, Also a level was
 ```{r}
 
 Pattern.assign<-matrix(sol.levels$solution,ncol = 9)
-#Pattern.assign
+Pattern.assign
 ```
-
-
-
 
 

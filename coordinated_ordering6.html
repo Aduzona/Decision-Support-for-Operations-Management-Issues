@@ -1487,7 +1487,7 @@ m.start &lt;- floor(copt_sol3$solution) # multiplier m
 q.start &lt;- ceiling(m.start * B.start * dei)   # order quantity q (in boxes, rounded up)</code></pre>
 <p>Afterwards, you have to find a layout scheme such that a precise shelf layout results.</p>
 <p>As you rightly point out you need to calculate the number of lanes <span class="math inline">\(l(q_i)\)</span> required for each product given a certain order quantity <span class="math inline">\(q_i\)</span> (integer number of boxes):</p>
-<p><span class="math display">\[l(q_i) =\left\lceil \frac{q_i}{n_i} \right\rceil\]</span> whereby <span class="math inline">\(n_i\)</span> is the number of boxes per lane dedicated to product <span class="math inline">\(i\)</span>. I.e., <span class="math inline">\(n_i = \left\lfloor \frac{rl}{b_i^{-1}} \right\rfloor\)</span>. Thus, for the solution of the JRP we have:</p>
+<p><span class="math display">\[l(q_i) =\left\lceil \frac{q_i}{n_i} \right\rceil\]</span> whereby <span class="math inline">\(n_i\)</span> is the number of boxes per lane dedicated to product <span class="math inline">\(i\)</span>. I.e., <span class="math display">\[n_i = \left\lfloor \frac{rl}{b_i^{-1}} \right\rfloor\]</span>. Thus, for the solution of the JRP we have:</p>
 <pre class="r"><code>l.start &lt;- ceiling(q.start/floor(rack_length/product_data$b_not_sorting))
 l.start</code></pre>
 <pre><code>##  [1] 1 1 1 1 2 2 3 3 3 3 3 3 2 2 2 2 2 2 2 2 1 2 2 2 2 2 2 2 2 2 2 2 2 2 2 1 1 1
@@ -1540,14 +1540,14 @@ ld</code></pre>
 <div id="pattern-assignment" class="section level1">
 <h1>Pattern Assignment</h1>
 <p>using Mixed Interger Linear Programming (MILP)</p>
-<p><span class="math display">\[\min \rightarrow \sum_{m=1}^{32}\sum_{k=1}^{9} x_{m,k}  \\ \sum_{m = 1}^{32}\sum_{k = 1}^9 x_{m,k} \cdot p_{k,j} \geq ld_j \quad \forall j \in \{200,400,600\} \quad (1) \\  \sum_{k = 1}^9 x_{m,k} \leq 1 \quad \forall m = 1,...,32 \quad (2) \\ x_{m,k} \in \{0,1\}\]</span> M= 32 levels,K= 9 patterns <span class="math inline">\(x_{m,k}\)</span> consist of a vector of decision variables with <span class="math inline">\((M \cdot K)\)</span> 288 elements <span class="math inline">\(X= ( K_1-M1,K2-M1,..K9-M1,....K1-M32,K2-M32,..K9-M32)\)</span>. <span class="math inline">\(J=3\)</span> unique lane width.There are $ J+K= 33$ constraints. Thus the right hand ride vector <span class="math inline">\(b=(\vec {ld_J},1_1,...1_{288})\)</span>. Correspondingly, the constraint matrix <span class="math inline">\(A\)</span> has dimension <span class="math inline">\(291 \times 288\)</span> and looks as follows:</p>
+<p><span class="math display">\[\min \rightarrow \sum_{m=1}^{32}\sum_{k=1}^{9} x_{m,k}  \\ \sum_{m = 1}^{32}\sum_{k = 1}^9 x_{m,k} \cdot p_{k,j} \geq ld_j \quad \forall j \in \{200,400,600\} \quad (1) \\  \sum_{k = 1}^9 x_{m,k} \leq 1 \quad \forall m = 1,...,32 \quad (2) \\ x_{m,k} \in \{0,1\}\]</span> M= 32 levels,K= 9 patterns <span class="math inline">\(x_{m,k}\)</span> consist of a vector of decision variables with <span class="math inline">\((M \cdot K)\)</span> 288 elements <span class="math inline">\(X= ( K_1-M1,K2-M1,..K9-M1,....K1-M32,K2-M32,..K9-M32)\)</span>. <span class="math inline">\(J=3\)</span> unique lane width.There are $ J+K= 35$ constraints. Thus the right hand ride vector <span class="math inline">\(b=(\vec {ld_J},1_1,...1_{32})\)</span>. Correspondingly, the constraint matrix <span class="math inline">\(A\)</span> has dimension <span class="math inline">\(35 \times 288\)</span> and looks as follows:</p>
 <p>let <span class="math inline">\(J1=200, J2=400, J3=600\)</span></p>
 <span class="math display">\[\begin{pmatrix} 
-... \\ $ P_{J1}$ \\ $P_{J2}$ \\ $P_{J3}$ \\ 1 \\ 2 \\ ... \\ 288
+... \\ $ P_{J1}$ \\ $P_{J2}$ \\ $P_{J3}$ \\ 1 \\ 2 \\ ... \\ 32
 \end{pmatrix}
 \quad
 \begin{pmatrix} 
-... \\ J1 \\ J2 \\ J3 \\ 1 \\ 2 \\ ... \\ 288
+... \\ J1 \\ J2 \\ J3 \\ 1 \\ 2 \\ ... \\ 32
 \end{pmatrix}
 \quad
 \begin{bmatrix} 
@@ -1555,9 +1555,9 @@ K1-M1 &amp; K2-M1 &amp; ...&amp; K9-M1 &amp; K1-M2 &amp; K2-M2 &amp; ...&amp; K9
 8 &amp; 0 &amp; ...&amp; 1 &amp; 8 &amp; 0 &amp; ... &amp; 1 &amp; ... &amp; 8 &amp; 0 &amp;... &amp; 1 \\
 ...\\
 ...\\
-1 &amp; 0 &amp; 0 &amp; .... \\
-0 &amp; 1 &amp; 0 &amp;....\\
-0 &amp; 0 &amp; 1 &amp;... \\
+1 &amp; 1 &amp; ... &amp; 1 &amp; 0 &amp; 0 &amp; ...&amp; 0 &amp; ....&amp; 0 &amp; 0 &amp; ... &amp; 0 \\
+0 &amp; 0 &amp; ... &amp; 0 &amp; 1 &amp; 1 &amp; ...&amp; 1 &amp; ... &amp; 0 &amp; 0 &amp; ... &amp; 0\\
+0 &amp; 0 &amp; ... &amp; 0 &amp; 0 &amp; 0 &amp; ...&amp; 0 &amp; ....&amp; 1 &amp; 1 &amp; ... &amp; 1\\
 
 \end{bmatrix}\]</span>
 <pre class="r"><code>library(Rglpk)</code></pre>
@@ -1584,17 +1584,19 @@ patterns        # matrix with dimensions (k,j)=(9,3)</code></pre>
 x.vec &lt;- integer(n.m*n.k)
 #x.vec &lt;- rep(1,n.m*n.k)
 
-b.vec &lt;- c(ld,rep(1,n.m*n.k)) # right hand side vector 
+# c(17,16,7) replace this with ld, it will give a feasible solution but it will still assign 2 patterns to 1 level
+
+b.vec &lt;- c(ld,rep(1,n.m)) # right hand side vector 
 
 #objective coeficients
 c.vec &lt;- c(rep(1,(n.m*n.k)))
   
-const.vec &lt;- c(rep(&quot;&gt;=&quot;,length(ld)), rep(&quot;&lt;=&quot;,(n.m*n.k))) # vector with constraint directions 
+const.vec &lt;- c(rep(&quot;&gt;=&quot;,length(ld)), rep(&quot;&lt;=&quot;,(n.m))) # vector with constraint directions 
 
 vtype.vec &lt;- rep(&quot;B&quot;,length(x.vec)) # vector with variable types (&quot;B&quot; binary ) 
 
 
-A.mat &lt;- matrix(0, ncol = n.m*n.k, nrow = (3+n.m*n.k) )# initialize constraint matrix
+A.mat &lt;- matrix(0, ncol = n.m*n.k, nrow = (3+n.m) )# initialize constraint matrix
 
 colnames(A.mat) &lt;- c(apply(expand.grid(nam.K, nam.M), 1, paste, collapse=&quot;-&quot;))
 
@@ -1615,9 +1617,9 @@ for (tuple.id in 1:3) {
 tuple.id &lt;- 4
 
 
- for (i in 1:288) {
-  
-  A.mat[tuple.id,i]&lt;- 1
+ for (m in 1:32) {
+   
+  A.mat[tuple.id,grepl(nam.M[m],colnames(A.mat))] &lt;- 1
   
   tuple.id&lt;- tuple.id + 1
   
@@ -1627,23 +1629,59 @@ tuple.id &lt;- 4
 
 sol.levels &lt;- Rglpk_solve_LP(obj = c.vec, mat = A.mat, dir = const.vec, rhs = b.vec, types = vtype.vec, control =list(&quot;verbose&quot; = T) )</code></pre>
 <pre><code>## GLPK Simplex Optimizer, v4.47
-## 291 rows, 288 columns, 864 non-zeros
+## 35 rows, 288 columns, 1071 non-zeros
 ##       0: obj =  0.000000000e+000  infeas = 1.040e+002 (0)
-## *    46: obj =  4.150000000e+001  infeas = 0.000e+000 (0)
-## *    63: obj =  3.550000000e+001  infeas = 0.000e+000 (0)
-## OPTIMAL SOLUTION FOUND
+##      20: obj =  9.000000000e+000  infeas = 6.333e+001 (0)
+## PROBLEM HAS NO FEASIBLE SOLUTION
 ## GLPK Integer Optimizer, v4.47
-## 291 rows, 288 columns, 864 non-zeros
+## 35 rows, 288 columns, 1071 non-zeros
 ## 288 integer variables, all of which are binary
-## Integer optimization begins...
-## +    63: mip =     not found yet &gt;=              -inf        (1; 0)
-## +   715: &gt;&gt;&gt;&gt;&gt;  3.600000000e+001 &gt;=  3.600000000e+001   0.0% (65; 0)
-## +   715: mip =  3.600000000e+001 &gt;=     tree is empty   0.0% (0; 129)
-## INTEGER OPTIMAL SOLUTION FOUND</code></pre>
-<pre class="r"><code>#sol.levels$solution   # OPTIMAL SOLUTION FOUND shows a matrix of zeros and 1</code></pre>
+## glp_intopt: optimal basis to initial LP relaxation not provided</code></pre>
+<pre class="r"><code>sol.levels$solution   # PROBLEM HAS NO FEASIBLE SOLUTION displays only zeros</code></pre>
+<pre><code>##   [1] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+##  [38] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+##  [75] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+## [112] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+## [149] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+## [186] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+## [223] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+## [260] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0</code></pre>
 <p>Pattern assignment are displayed below also note, Also a level was</p>
 <pre class="r"><code>Pattern.assign&lt;-matrix(sol.levels$solution,ncol = 9)
-#Pattern.assign</code></pre>
+Pattern.assign</code></pre>
+<pre><code>##       [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9]
+##  [1,]    0    0    0    0    0    0    0    0    0
+##  [2,]    0    0    0    0    0    0    0    0    0
+##  [3,]    0    0    0    0    0    0    0    0    0
+##  [4,]    0    0    0    0    0    0    0    0    0
+##  [5,]    0    0    0    0    0    0    0    0    0
+##  [6,]    0    0    0    0    0    0    0    0    0
+##  [7,]    0    0    0    0    0    0    0    0    0
+##  [8,]    0    0    0    0    0    0    0    0    0
+##  [9,]    0    0    0    0    0    0    0    0    0
+## [10,]    0    0    0    0    0    0    0    0    0
+## [11,]    0    0    0    0    0    0    0    0    0
+## [12,]    0    0    0    0    0    0    0    0    0
+## [13,]    0    0    0    0    0    0    0    0    0
+## [14,]    0    0    0    0    0    0    0    0    0
+## [15,]    0    0    0    0    0    0    0    0    0
+## [16,]    0    0    0    0    0    0    0    0    0
+## [17,]    0    0    0    0    0    0    0    0    0
+## [18,]    0    0    0    0    0    0    0    0    0
+## [19,]    0    0    0    0    0    0    0    0    0
+## [20,]    0    0    0    0    0    0    0    0    0
+## [21,]    0    0    0    0    0    0    0    0    0
+## [22,]    0    0    0    0    0    0    0    0    0
+## [23,]    0    0    0    0    0    0    0    0    0
+## [24,]    0    0    0    0    0    0    0    0    0
+## [25,]    0    0    0    0    0    0    0    0    0
+## [26,]    0    0    0    0    0    0    0    0    0
+## [27,]    0    0    0    0    0    0    0    0    0
+## [28,]    0    0    0    0    0    0    0    0    0
+## [29,]    0    0    0    0    0    0    0    0    0
+## [30,]    0    0    0    0    0    0    0    0    0
+## [31,]    0    0    0    0    0    0    0    0    0
+## [32,]    0    0    0    0    0    0    0    0    0</code></pre>
 </div>
 
 
