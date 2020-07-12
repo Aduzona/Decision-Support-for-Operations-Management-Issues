@@ -1,10 +1,8 @@
 ---
-title: "coordinated_ordering6"
+title: "coordinated_ordering7"
 author: "GroupB"
-date: "24/06/2020"
-output:
-  html_document: default
-  pdf_document: default
+date: "11/07/2020"
+output: html_document
 ---
 
 # Data preparation 
@@ -21,7 +19,7 @@ rack_length= 6000
 rack_width=1750
 rack_height=300
 
-product_data$demand_per_year= ceiling((product_data$`demand per day` *365)/ product_data$`pieces/box`)
+product_data$demand_per_year= ceiling((product_data$`demand per day` *262)/ product_data$`pieces/box`) 
 
 product_data$box_cost= product_data$`pieces/box` * product_data$price
 
@@ -109,7 +107,7 @@ lane.max <- ceiling(product_data$eoq.max * product_data$b_not_sorting / rack_len
 
 # total rack width 
 
-rack_total_width <- rack_width * 4 * 8
+rack_total_width <- 51200  #rack_width * 4 * 8
 
 # overflow in mm
 sum(lane.min*product_data$b_sorting) - rack_total_width
@@ -440,118 +438,73 @@ sum(l.start[names(l.start) == "600"]))
 ld
 ```
 
-So, finally, we need to select for each level an pattern and assure that the lane demand is met. Let $x_{m,k} \in \{0,1\}$ indicate whether pattern $k=1,...,9$ is selected for level $m= 1,...,32$. Then, we need to set up a model that assures that enough lanes are assigned for each type $j$
+# Changes made on q
 
-$$ \sum_{m = 1}^{32}\sum_{k = 1}^9 x_{m,k} \cdot p_{k,j} \geq ld_j \quad \forall j \in \{200,400,600\}$$
-
-and to each level just one pattern can be assigned. 
-
-$$ \sum_{k = 1}^9 x_{m,k} \leq 1 \quad \forall m = 1,...,32$$
-
-As each pattern has the same rest (see Excel file), the objective function is more or less free to choose. E.g. you could minimize the total number of pattern assignments $\min \rightarrow \sum_{m,k} x_{m,k}$. The final assignment, which product is exactly assigned to which lane can then be done manually. To solve the model, an integer solver is required. 
+1. We assumed that there are 262 working days for the year 2020 according to https://hr.uiowa.edu/pay/payroll-services/payroll-calendars/working-day-payroll-calendar-2020 
 
 
+2. rack_total_width which was  56,000 mm, looking at the 9 patterns all of which have 150 mm in waste, meaning  all 32 levels will have 150 mm waste each. Therefor $56,000 - (150 *32) = 51,200$ thereby changing rack total width 51,200.
 
-# Pattern Assignment
+3. These changes then affects the values of q  for all the 62 items involved.
 
-using Mixed Interger Linear Programming (MILP)
 
-$$\min \rightarrow \sum_{m=1}^{32}\sum_{k=1}^{9} x_{m,k}  \\ \sum_{m = 1}^{32}\sum_{k = 1}^9 x_{m,k} \cdot p_{k,j} \geq ld_j \quad \forall j \in \{200,400,600\} \quad (1) \\  \sum_{k = 1}^9 x_{m,k} \leq 1 \quad \forall m = 1,...,32 \quad (2) \\ x_{m,k} \in \{0,1\}$$
-M= 32 levels,K= 9 patterns $x_{m,k}$  consist of a vector of decision variables with $(M \cdot K)$ 288 elements $X= ( K_1-M1,K2-M1,..K9-M1,....K1-M32,K2-M32,..K9-M32)$. $J=3$ unique lane width.There are $ J+K= 35$ constraints. Thus the right hand ride vector $b=(\vec {ld_J},1_1,...1_{32})$. Correspondingly, the constraint matrix $A$ has dimension $35 \times 288$ and looks as follows:
-
-let $J1=200, J2=400, J3=600$
-
-\begin{pmatrix} 
-... \\ $ P_{J1}$ \\ $P_{J2}$ \\ $P_{J3}$ \\ 1 \\ 2 \\ ... \\ 32
-\end{pmatrix}
-\quad
-\begin{pmatrix} 
-... \\ J1 \\ J2 \\ J3 \\ 1 \\ 2 \\ ... \\ 32
-\end{pmatrix}
-\quad
-\begin{bmatrix} 
-K1-M1 & K2-M1 & ...& K9-M1 & K1-M2 & K2-M2 & ...& K9-M2 & ... & K1-M32 & K2-M32 & ... & K9-M32\\
-8 & 0 & ...& 1 & 8 & 0 & ... & 1 & ... & 8 & 0 &... & 1 \\
-...\\
-...\\
-1 & 1 & ... & 1 & 0 & 0 & ...& 0 & ....& 0 & 0 & ... & 0 \\
-0 & 0 & ... & 0 & 1 & 1 & ...& 1 & ... & 0 & 0 & ... & 0\\
-0 & 0 & ... & 0 & 0 & 0 & ...& 0 & ....& 1 & 1 & ... & 1\\
-
-\end{bmatrix}
+To fulfill lane demands from the items $ld$ are 15 lanes with with 200, 15 lanes with width 400 and 64 lanes with width 600. To fulfull this demand, only 2 patterns are needed.
 
 ```{r}
-library(Rglpk)
+patterns[3:4,]
+```
+Assign Patterns
 
-n.m <- 32                      # number of levels
-n.k <- length(patterns[,1])    # number of patterns
+```{r}
 
-nam.M <- paste("M", 1:n.m, sep = "")
-nam.K <- paste("K", 1:n.k, sep = "")
+fitted.pattern <- patterns[3:4,]
+# loop through 32 levels to assign patterns
 
-patterns        # matrix with dimensions (k,j)=(9,3)
+levels.pattern.mat <- matrix(0,  nrow = 32,ncol = 3)
 
-#decision variables initialized to zeros
-x.vec <- integer(n.m*n.k)
-#x.vec <- rep(1,n.m*n.k)
-
-# c(17,16,7) replace this with ld, it will give a feasible solution but it will still assign 2 patterns to 1 level
-
-b.vec <- c(c(17,16,50),rep(1,n.m)) # right hand side vector 
-
-#objective coeficients
-c.vec <- c(rep(1,(n.m*n.k)))
-  
-const.vec <- c(rep(">=",length(ld)), rep("<=",(n.m))) # vector with constraint directions 
-
-vtype.vec <- rep("B",length(x.vec)) # vector with variable types ("B" binary ) 
-
-
-A.mat <- matrix(0, ncol = n.m*n.k, nrow = (3+n.m) )# initialize constraint matrix
-
-colnames(A.mat) <- c(apply(expand.grid(nam.K, nam.M), 1, paste, collapse="-"))
-
-# (demand constraints)
-
-
-for (tuple.id in 1:3) {
-  for (j in 1:32) {
-    for (k in 1:9) {
-      A.mat[tuple.id,grepl(nam.K[k],colnames(A.mat))]<- patterns[k,tuple.id]
-      
-    }
-  }    
+for (i in 1:32) {
+  for (j in 1:3) {
+    
+  if(i<= 16){
+    levels.pattern.mat[i,j] <- t(fitted.pattern[1,j])
+  } else {
+     levels.pattern.mat[i,j] <- t(fitted.pattern[2,j])
+   }
+  }
 }
 
-      
-      
-tuple.id <- 4
 
+# confirm if lane demand is met.
 
- for (m in 1:32) {
-   
-  A.mat[tuple.id,grepl(nam.M[m],colnames(A.mat))] <- 1
-  
-  tuple.id<- tuple.id + 1
-  
-}
-
-#A.mat
-
-sol.levels <- Rglpk_solve_LP(obj = c.vec, mat = A.mat, dir = const.vec, rhs = b.vec, types = vtype.vec, control =list("verbose" = T) )
-
-sol.levels$solution   # PROBLEM HAS NO FEASIBLE SOLUTION displays only zeros
-
+sum(levels.pattern.mat[1:32,1]) >= sum(ld[1]) #TRUE  for 200
+sum(levels.pattern.mat[1:32,2]) >= sum(ld[2]) #TRUE  for 400
+sum(levels.pattern.mat[1:32,3]) >= sum(ld[3]) #TRUE  for 600
 
 ```
 
+This shows that the assignments are correct.
 
-Pattern assignment are displayed below also note, Also a level was 
+# Asssign Items to levels
+
+*Still ongoing*
+
 ```{r}
 
-Pattern.assign<-matrix(sol.levels$solution,ncol = 9)
-Pattern.assign
-```
+#ld <- c(sum(l.start[names(l.start) == "200"]),
+#sum(l.start[names(l.start) == "400"]),
+#sum(l.start[names(l.start) == "600"]))
+#ld
 
+
+#material
+#for (i in 1:62) {
+ # if(round(product_data$b_sorting[i]/100)*100 == 200){
+  #l.start[names(l.start) == "200"]
+  #l.start[names(l.start) == "400"]
+  #}
+  
+#}
+
+```
 
 
