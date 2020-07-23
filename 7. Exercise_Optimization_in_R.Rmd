@@ -140,12 +140,8 @@ sol$optimum
 ```
 4. Solve the Transshipment Problem with `Rglpk`:
 $$ \min\limits_{x_{ij}} \rightarrow \sum_{i \in \mathcal{V}_a }\sum_{j \in \mathcal{V}_t } c_{ij} \cdot x_{ij} + \sum_{j \in \mathcal{V}_t }\sum_{k \in \mathcal{V}_b } c_{jk} \cdot x_{jk}  $$
-\begin{align}
-\sum_{j \in \mathcal{V}_t} x_{ij} & \leq a_i & \forall i \in \mathcal{V}_a \\
-\sum_{j \in \mathcal{V}_t} x_{jk} & \geq b_k & \forall k \in \mathcal{V}_b \\
-\sum_{i \in \mathcal{V}_a} x_{ij} & = \sum_{k \in \mathcal{V}_b} x_{jk} & \forall j \in \mathcal{V}_t \\
-x_{ij} & \geq 0 \\
-\end{align}
+
+$$ \sum_{j \in \mathcal V_t} x_{i,j} \le  a_i \qquad \forall i \in  \mathcal V_a \\ \sum_{j \in \mathcal V_t} x_{j,k} \ge  b_k \qquad  \forall k \in \mathcal V_b  \\ \sum_{i \in \mathcal V_a} x_{ij} = \sum_{k \in \mathcal V_b} x_{x_{jk}} \qquad \forall j \in \mathcal V_t \\ x_{ij} \ge 0$$
 
 where $a_i$ is the maximum supply capacity of node $i \in \mathcal{V}_a$, $b_k$ denotes the demand of node $j \in \mathcal{V}_b$, $c_{ij/jk}$ are transport cost rates and $x_{ij/jk}$ are shipment quantities. 
 ```{r}
@@ -153,14 +149,14 @@ n.a<- 4  #number sources
 n.b <- 5 # number sinks
 n.t <- 3 #number terminals
 
-nam.A <- paste("A",1:n.a, sep = "")
-nam.B <- paste("B",1:n.b, sep = "")
-nam.c <- paste("T",1:n.t, sep = "")
+nam.A <- paste("A",1:n.a, sep = "") # "A1" "A2" "A3" "A4"
+nam.B <- paste("B",1:n.b, sep = "") # "B1" "B2" "B3" "B4" "B5"
+nam.T <- paste("T",1:n.t, sep = "") #  "T1" "T2" "T3"
 # sample demand & supply
 
 repeat{
-  d.vec <- round(runif(n.b, min = 100, max = 200))
-  s.vec <- round(runif(n.a, min = 150, max = 250))
+  d.vec <- round(runif(n.b, min = 100, max = 200)) # 5 demand values from B nodes
+  s.vec <- round(runif(n.a, min = 150, max = 250)) # 4 supply values from A nodes
   #check for sufficient supply
   if(sum(d.vec) < sum(s.vec)) break
 }
@@ -194,7 +190,26 @@ vtype.vec
 # contraint matrix A
 
 ```
+```{r}
+#A Contraint matrix A
+A.mat <- matrix(0, ncol = length(x.vec), nrow = n.a + n.b + n.t)
+A.mat
 
+# use variable names
+colnames(A.mat) <- c(
+  apply(expand.grid(nam.A, nam.T), 1, paste, collapse="-"),
+  apply(expand.grid(nam.T, nam.B), 1, paste, collapse="-")
+)
+A.mat # the columns are directions 
+```
+
+
+```{r}
+# iteratively add constraints via name matching
+# supply constraints
+
+
+```
 
 #Exercise 5: 
 Change the problem by adding constraints that prohibit the center to be closer than 0.5 distance units to any point

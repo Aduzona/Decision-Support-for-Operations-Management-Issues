@@ -1,15 +1,26 @@
 ---
-title: "coordinated_ordering7"
+title: "Coordinated_Ordering"
 author: "GroupB"
-date: "11/07/2020"
-output: html_document
+date: "22/07/2020"
+output: 
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_float: true
+    number_sections: false
+  pdf_document: default
 ---
+
+```{r setup, include=TRUE, cache=F}
+library(kableExtra)
+library(knitr)
+```
 
 # Data preparation 
 
-```{r setup, include=TRUE, cache=F}
+```{r}
 library(readxl)
-#setwd("C:\\Users\\Thomas\\Documents\\Thomas\\Owncloud\\Data_Science_PL\\datasets\\coordinated ordering\\Code_group")
+
 product_data <- read_excel("Data_ordering.xlsx",sheet = "product data")
 box_data <- read_excel("Data_ordering.xlsx",sheet = "box data")
 #rack data
@@ -19,41 +30,53 @@ rack_length= 6000
 rack_width=1750
 rack_height=300
 
+
+```
+
+
+## Convert to Boxes
+
+Convert demand $d_i$, quantity $q_i$ and unit price $p_i$ all from part $i$ to box $bc_i$ which is the capacity of a box for part $i$. 
+
+Demand for box with part $i$ . $$y_i=\frac {d_i}{bc_i} $$
+
+Price for box with material $i$ .$$pr_i= b_i \cdot p_i$$
+
+$y_i = demand\_per\_year \\ ,$
+$pr_i = box\_cost$
+
+
+
+```{r}
+
 product_data$demand_per_year= ceiling((product_data$`demand per day` *262)/ product_data$`pieces/box`) 
 
 product_data$box_cost= product_data$`pieces/box` * product_data$price
 
 product_data
 
-# shortcut ordering cost
+
 
 product_data <- merge(product_data, box_data[,c("box ID", "ordering cost (€)")], by = "box ID")
 
 colnames(product_data)[8] <- "ordering_cost"
-
-# order_cost <- double(length(product_data$`box ID`))
-# 
-# for(j in 1: length(box_data$`box ID`)){
-#   for (k in 1:length(product_data$`box ID`)) {
-#     if(box_data$`box ID`[j]==product_data$`box ID`[k]){
-#       order_cost[k] <- box_data$`ordering cost (€)`[j]
-#     }
-#   }
-#   
-# }
-# 
-# product_data$ordering_cost <- order_cost 
-# product_data
 ```
 
 
+# Separate Ordering (SO)
+
+$c_i^{or}=$ ordering cost for part $i ,\space$
+
+$c_i^{sh}=$ stock holding cost rate based on unit price $p_i$ and interest rate $h, \qquad$.
+$c_i^{sh}=p_i \cdot h$
+
+calculate EOQ for each part i:
+$$ q_i^* = \sqrt \frac {2 \cdot y_i \cdot (c_i^{or}+c^{-or})} {pr_i \cdot h}$$
+
+## EOQ modelling
 
 
-
-# EOQ modelling
-
-
-```{r, cache=TRUE}
+```{r}
 #dei= demand_per_year, cori= ordering cost for box i
 #cord= ordering cost, pri= box cost, h= interest rate
 
@@ -71,11 +94,17 @@ vec_so_eoq_fun.min <- so_eoq_fun(dei = product_data$demand_per_year,cori=product
 product_data$eoq.min <- round(vec_so_eoq_fun.min)
 product_data$eoq.max <- round(vec_so_eoq_fun.max)
 
-
 ```
 
 
-# Lane occupation 
+## Lane Occupation
+
+$b_i=$ sorting column lenght or width.This determines the rack width
+
+$b_i^{-1}=$if sorted by length then the value is width and vice versa, used for rack lenght.
+
+Add $b_i$ and $b_i^{-1}$ to product_data table
+
 ```{r}
 # constraints #####################################
 # this can be formulated more elegantly, but it works and that suffices
@@ -107,7 +136,7 @@ lane.max <- ceiling(product_data$eoq.max * product_data$b_not_sorting / rack_len
 
 # total rack width 
 
-rack_total_width <- 51200  #rack_width * 4 * 8
+rack_total_width <- rack_width * 4 * 8
 
 # overflow in mm
 sum(lane.min*product_data$b_sorting) - rack_total_width
@@ -115,14 +144,82 @@ sum(lane.max*product_data$b_sorting) - rack_total_width
 # relative overflow in %
 (sum(lane.min*product_data$b_sorting) - rack_total_width)/rack_total_width*100
 (sum(lane.max*product_data$b_sorting) - rack_total_width)/rack_total_width*100
-
 ```
 
-# Constrained EOQ optimization
+E.g Using box_ID 6203060, sorted by length
+$b_i=396$, $b_i^{-1}=297$
+Also for material ID 7305667+74 with $q_i=214$ therefore,
+$rack_{length}=6000 \\$
+1. Number of boxes in a lane:
+$$n_i=\frac {rack_{length}}{b_i^{-1}}=\frac {6000}{297}=20.20=20boxes$$
 
 
-```{r, cache=TRUE}
 
+
+
+2. How many lanes part $i$ will occupy if you order some number of boxes
+$$lane_i=\frac {q_i}{n_i}\\lane_i=q_i \cdot \frac {b_i^{-1}}{rack_{length}}=214 \cdot \frac {297}{6000}=10.593= 11 \space lanes $$
+
+```{r}
+lane <- ceiling(product_data$eoq * (product_data$b_not_sorting/rack_length))
+lane
+```
+
+(C) Do we meet the capacity contraint?
+
+3. Total number of lanes constraints
+
+Collapsing Rack 4 levels in a rack and joining the 8 racks to become 1 level.
+
+Total rack width available: 
+
+$$rack_{total_{Width}}=(rack_{width} \times 4 \times 8)$$
+```{r}
+rack_total_width <-rack_width * 4 * 8
+rack_total_width #56000
+```
+
+
+Please note the coefficients are  are different for every ith item except racklength which is the same for all items.Also the left and right hand side of the equation need to be in mm.
+$$\sum_{i=1}^{n=62}lane_i \cdot b_i\le rack_{Total_{width}} \\ \sum_{i=1}^{n=62} q_i \cdot \frac {b_i^{-1} \cdot b_i}{rack_{length}} \le rack_{Total_{width}} \quad \quad (1)$$
+
+```{r}
+#get the with of the lanes in mm
+rack_width_occupied=sum(sum(lane*product_data$b_sorting))
+rack_width_occupied
+if(rack_width_occupied <= rack_total_width){
+  print(paste0("Capacity constraint fulfilled: ", rack_width_occupied, "<=",rack_total_width))
+ 
+}else {
+  violated <- rack_width_occupied - rack_total_width
+  print(paste0("Capacity constraint violated by: ",violated ))
+}
+
+```
+As seen above contraint was voilated by $1387664 mm$, this means that we ordered too much, therefore we need to optimize $q_i$
+
+
+Using our example to get number of the total width i.e (summation of lanes) in $mm$: 
+Summation of lanes can simply be: 
+$$lanes_i \cdot b_i= 10.593 \cdot 396=4194.828$$
+Using equation (1) to prove this concept.
+
+$$214 \cdot \frac {396 \cdot 297}{6000}=4194.828 \\ b_i= \frac {4194.828}{10.593}=396$$
+
+(D) Adjust Q by reducing it:
+
+$\frac {y_i}{q_i}=$ no of orders for part $i \\$
+$\frac {q_i}{2}=$ average inventory for part $i$
+
+## Constrained EOQ optimization
+
+$$ min \rightarrow (\sum_{i=1}^{n=62}c^{-or} + \sum_{i=1}^{n=62} \frac {y_i}{q_i} \cdot c_i^{or}) + (h \cdot \sum_{i=1}^{n=62} \frac {q_i}{2}\cdot pr_i ) $$
+Subject to:
+$$\sum_{i=1}^{n=62} q_i \cdot \frac {b_i^{-1} \cdot b_i}{rack_{length}} \le rack_{Total_{width}} $$
+
+
+
+```{r}
 library(ROI)
 library(ROI.plugin.alabama)
 
@@ -184,8 +281,10 @@ const.fun(round(copt_sol$solution))#55686
 
 obj.fun(copt_sol$solution)#131387.3
 obj.fun(round(copt_sol$solution))#132096.3  rounded q values
-
 ```
+
+
+
 
 
 # Joint Ordering (JO)
@@ -202,6 +301,7 @@ Assumptions:
 - General setup costs: $c^{-or}$
 - Cycle time of product $i$: $T_i$
 
+
 ```{r}
 n <- length(product_data$`box ID`)
 c.or0 <- cord
@@ -209,14 +309,13 @@ c.or <- product_data$ordering_cost
 #H.vec <- 0.5 * dei * c.sh
 # based on the previous definition, I think this should be the vector of holding cost multipliers
 H.vec <- 0.1 * product_data$box_cost * dei * .05
-
 ```
 
 
 ## Objective Function with no capacity constraint
 
 - $B=$basic cycle time
-- $H_i=0.5 \cdot de_i \cdot c_i^{sh}$
+- $H_i=0.5 \cdot y_i \cdot c_i^{sh}$
 - $H_0=0$  Holding cost multiplier are $H_0 \space and  \space H_i$
 - $$C(m_i B)=\sum_{i=0}^n (\frac {c_i^{or}}{m_i \cdot B}+H_i \cdot m_i \cdot B) == \frac {c_o^{or}}{B}+ \sum_{i=1}^n (\frac {c_i^{or}}{m_i \cdot B}+H_i \cdot m_i \cdot B)  \\ subject \space to: \quad \quad \quad \quad \quad \quad \quad \quad \quad  \\ m_i \ge m_0 \quad \forall i >0 \\m_i \in \mathbb N \qquad \forall i   $$
 
@@ -251,6 +350,7 @@ rownames(df) <- c(  "$T_i$" ,"$T^C$"  )
 kable(df,"pandoc", row.names = T)
 ```
 
+
 ```{r}
 # identify break
 which(res.mat[1,] > res.mat[2,])# break occured after 13
@@ -272,9 +372,11 @@ rownames(df) <- c("$m_i=\\frac{T_i}{B}$" ,"$[m_i]$", "$[\\tilde{m}_i]$" )
 kable(df,"pandoc", row.names = T)
 ```
 
+
+
 Reoptimizing basic cycle time yields $B=$  $`r round(B.int,2)`$ and the total cost are `r round(c.cost.int,2)` 
 
-The order quantities are given by multiplying the cycle times $T_i$ with demand rates $y_i$, i.e. $q_i = T_i \cdot de_i$ such that
+The order quantities are given by multiplying the cycle times $T_i$ with demand rates $y_i$, i.e. $q_i = T_i \cdot y_i$ such that
 
 ```{r}
 dei <- dei[reo.id]
@@ -283,6 +385,7 @@ colnames(df) <- reo.id
 rownames(df) <- c("$[\\tilde{m}_i]$", "$T_i$", "$q_i$" )
 kable(df,"pandoc", row.names = T)
 ```
+
 
 --> Now the question is: Is this feasible? --> no:
 
@@ -321,6 +424,7 @@ copt_sol2$solution
 ```
 
 
+
 --> You should  integrate the shelf capacity constraint 
 --> I also recommmend to stick with the basic period approach
 
@@ -339,7 +443,11 @@ const.fun2 <- function(m, B = B.start, y= dei, bns = product_data$b_not_sorting,
 
 Then, you can use the original JRP function and update the model by including the capacity constraint. Therefore I recommend that you fix $B$ to some appropriate value based on the feasible solution above
 
+$rack_{Totalwidth}=51200$
+
 ```{r}
+
+rack_total_width<-51200
 # we reinitialize the vectors
 n <- length(product_data$`box ID`)
 c.or0 <- cord
@@ -374,8 +482,6 @@ jrp.obj.fun(m= copt_sol3$solution)
 const.fun2(m= copt_sol3$solution) <= rack_total_width
 
 ```
-
-Now you should have some good starting solution. Still you need to round the solution. If standard rounding does not yield a feasible solution, rounding down should:
 
 ```{r}
 # not feasible
@@ -425,6 +531,8 @@ colnames(patterns) <- c("200","400","600")
 patterns
 ```
 
+
+
 Let $p_{k,j}$ indicate the number of lanes of type $j$ associated to pattern $k$. Now we need to assess the number of lanes per required of each type. As outlined above, we know the number of lanes per product $l(q_i)$, thus we can deduce the demand for lane type $j$ ($ld_j$) by summing up the $l(q_i)$  for each lane type,  i.e., $ld_j = \sum_{i \in P|b_i=j} l(q_i)$:
 
 ```{r}
@@ -438,7 +546,8 @@ sum(l.start[names(l.start) == "600"]))
 ld
 ```
 
-# Changes made on q
+
+## Changes made on q
 
 1. We assumed that there are 262 working days for the year 2020 according to https://hr.uiowa.edu/pay/payroll-services/payroll-calendars/working-day-payroll-calendar-2020 
 
@@ -484,29 +593,9 @@ sum(levels.pattern.mat[1:32,3]) >= sum(ld[3]) #TRUE  for 600
 
 ```
 
-This shows that the assignments are correct.
 
-# Asssign Items to levels
-
-*Still ongoing*
 
 ```{r}
 
-#ld <- c(sum(l.start[names(l.start) == "200"]),
-#sum(l.start[names(l.start) == "400"]),
-#sum(l.start[names(l.start) == "600"]))
-#ld
-
-
-#material
-#for (i in 1:62) {
- # if(round(product_data$b_sorting[i]/100)*100 == 200){
-  #l.start[names(l.start) == "200"]
-  #l.start[names(l.start) == "400"]
-  #}
-  
-#}
-
 ```
-
 
