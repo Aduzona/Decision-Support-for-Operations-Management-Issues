@@ -318,6 +318,8 @@ copt_sol2
 
 copt_sol2$solution
 
+ceiling(copt_sol2$solution * B * dei) # quantity
+
 ```
 
 
