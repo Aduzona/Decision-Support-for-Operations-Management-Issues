@@ -2,14 +2,15 @@
 title: "coordinated_ordering9"
 author: "GroupB"
 date: "28/07/2020"
-output:
-    html_document:
+output: 
+  pdf_document: default
+  html_document:
     df_print: paged
     toc: yes
     toc_float: true
     number_sections: false
-  pdf_document: default
 ---
+
 
 
 ```{r setup, include=TRUE, cache=F}
@@ -900,9 +901,7 @@ product_data$cycle_time_in_days[30]<- 39
 
 
 ```{r}
-item <-20
-
-Periodic.inventory <-function(item=1){
+Periodic.inventory <-function(item){
   
   #Yt demand
 dem <- product_data$deman_per_day_boxes
@@ -927,11 +926,7 @@ m <- product_data$cycle_time_in_days
 #period.mat[3,0]<-  stock.level[1]
 t<- 1
 #for (t in 1:262) {
-
-#item <- 20
-
 while(t<=262){
-  
   if(item==12){
     
     if(t==1){
@@ -944,7 +939,7 @@ while(t<=262){
     if(t %% floor(m[item])==0){
       #b<-t+1
       #print(t+1)
-     period.mat[2,t]<- stock.level[item]-(period.mat[3,t-1]-dem[item])
+     period.mat[2,t]<- quant[item]
      
      # fill the capacity
      period.mat[3,t]<- stock.level[item] #quant[item]+period.mat[3,t-1]-dem[item]
@@ -953,7 +948,6 @@ while(t<=262){
       period.mat[3,t]<- period.mat[3,t-1]-dem[item]
     }
   }
-    
     
     
   }else if(item== 30){
@@ -969,7 +963,7 @@ while(t<=262){
     if(t %% floor(m[item])==0){
       #b<-t+1
       #print(t+1)
-     period.mat[2,t]<- stock.level[item]-(period.mat[3,t-1]-dem[item])
+     period.mat[2,t]<- quant[item]
      
      # fill the capacity
      period.mat[3,t]<- stock.level[item] #quant[item]+period.mat[3,t-1]-dem[item]
@@ -980,8 +974,8 @@ while(t<=262){
   }
     
     
+  }else {
     
-  }else{
     
     if(t==1){
     period.mat[1,t]<-dem[item]
@@ -993,7 +987,7 @@ while(t<=262){
     if(t %% floor(m[item])==1){
       #b<-t+1
       #print(t+1)
-     period.mat[2,t]<- stock.level[item]-(period.mat[3,t-1]-dem[item])
+     period.mat[2,t]<- quant[item]
      
      # fill the capacity
      period.mat[3,t]<- stock.level[item] #quant[item]+period.mat[3,t-1]-dem[item]
@@ -1002,27 +996,22 @@ while(t<=262){
       period.mat[3,t]<- period.mat[3,t-1]-dem[item]
     }
   }
+  
+  
+}
+
+ t=t+1
     
   }
   
-  t=t+1
+  
+  row.names(period.mat)<- c("yt","qt","lt")  
+  period.mat
   
 }
 
-row.names(period.mat)<- c("yt","qt","lt")  
-  period.mat
-}
-
-as.data.frame(Periodic.inventory(item=30))
-#stock.level[5]
-#product_data
-
-#Periodic.inventory(30)
-
-#dem[[item]]
+as.data.frame(Periodic.inventory(30))
 ```
-
-
 
 
 
@@ -1071,30 +1060,3 @@ sum(levels.pattern.mat[1:32,2]) >= sum(ld[2]) #TRUE  for 400
 sum(levels.pattern.mat[1:32,3]) >= sum(ld[3]) #TRUE  for 600
 
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
