@@ -3,12 +3,12 @@ title: "coordinated_ordering9"
 author: "GroupB"
 date: "28/07/2020"
 output: 
-  pdf_document: default
   html_document:
     df_print: paged
     toc: yes
     toc_float: true
     number_sections: false
+  pdf_document: default
 ---
 
 
@@ -795,7 +795,9 @@ $yb_i= \frac {yd_i}{bc_i} $
 
 $ct =$cycle time is number of days it takes before a new order.
 
-$$ct= \frac {q}{yb_i}= \frac  {m_i \cdot B \cdot y_i}{yb_i} $$
+E.g Item 4 has lot size quantity of 18 boxes, and daily demand in boxes is 1.2
+$$ct= \frac {q}{yb_i}= \frac  {m_i \cdot B \cdot y_i}{yb_i} \\ ct= \frac {18}{1.2}=15days$$
+The example above shows that for item 4, it takes about 15 day to make another order.
 
 e.g assuming we order 17 items and demand pay day in boxes is 1.6667  this mean it will take about 10 day to make another other.
 
@@ -876,6 +878,9 @@ We are using periodic review as order intervals can be derived from period order
 
 * Lead time is zero.
 
+* No Backorder
+
+* Stock is filled to the capacity in period 1.
 
 
 *Notations and Formulars*
@@ -897,6 +902,9 @@ for item 30, we changed the cycle time in days to 39 instead of 42.
 product_data$cycle_time_in_days[30]<- 39
 ```
 
+
+In the code below, Shows (T,S) Policy, how demand is met over 262 time period.
+Reason for TS policy is that we can not exceed capacity, thus we order upto Lane capacity of each item. Also each item has its cycle time in days which was derived from order frequency M.
 
 
 
