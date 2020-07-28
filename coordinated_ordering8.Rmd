@@ -43,7 +43,7 @@ Demand for box with part $i$ . $$y_i=\frac {d_i*262}{bc_i} $$
 Price for box with material $i$ .$$pr_i= bc_i \cdot p_i$$
 
 $y_i = demand\_per\_year \\ ,$
-$pr_i = box\_cost$
+$pr_i = box\_cost=$ value of box
 
 
 
@@ -61,6 +61,67 @@ product_data <- merge(product_data, box_data[,c("box ID", "ordering cost (€)")
 
 colnames(product_data)[8] <- "ordering_cost"
 product_data
+```
+
+
+## ABC Analysis
+
+Procedure:
+$d_i=$consumption and $p_i=$ price of material $i \in I$, then
+1. Calculate value share of material $i:v_i=\frac {d_i\cdot p_i}{\sum_{j\in I}d_j \cdot p_j}$
+
+```{r}
+#remember box cost is demand times price
+value.share <- product_data$box_cost/sum(product_data$box_cost)
+
+
+```
+
+2. Order materials descendingly according to value share: $v_1^´ \ge v_2^´ \ge...\ge v_{|I|}^´ $
+
+$v_i^´=ord.share$
+```{r}
+cycle.time <- data.frame(rbind(sort(unique(product_data$Order_frequency_M))*min(product_data$cycle_time_in_days)   ))
+
+colnames(cycle.time) <- sort(unique(product_data$Order_frequency_M))
+rownames(cycle.time) <- c("Days M." )
+
+kable(cycle.time,"html", row.names = T, escape = F) %>%
+  kable_styling("striped")
+
+
+
+ord.share<- data.frame(rbind(sort(value.share,decreasing=TRUE) )) 
+reoder.item <- order(value.share,decreasing = TRUE)
+colnames(ord.share)<- reoder.item 
+ord.share
+#as.data.frame(ord.share)
+```
+
+3. Calculate cumulative ordered value share of each material: $\tilde v_i= \sum_{j=1}^i v_j^´$ 
+
+$\tilde v_i= cum.ord.share$
+```{r}
+cum.ord.share <-cumsum(as.vector(ord.share))
+cum.ord.share
+```
+
+
+
+4. Categorize materials according to $\tilde v_i$ into classes A,B and C by class limits e.g 80,95,100
+
+
+```{r}
+share.mat.num <- 0:length(ord.share)/length(ord.share)
+
+#"p" for points, "l" for lines, "b" for both,"c" for the lines part alone of "b"
+png(file = "abc_plot.png", bg = "transparent", width=1200, height = 600)
+par(family="serif")
+
+{plot(share.mat.num, c(0,cum.ord.share), type="b" , xlab = "share of material number", ylab="cumulative ordered value share", pch = 16, cex.lab = 2, cex.axis = 1.5)
+abline(h = c(.8,.95), lty="dashed")
+text(x= share.mat.num[-1], y = cum.ord.share-.03, labels=1:15, cex=1.75)
+text(x= c(.05,.05,0.05), y = c(.6,.875,.990), labels=c("A","B","C"), cex=3)}
 ```
 
 
@@ -392,7 +453,7 @@ c.or0 <- cord
 c.or <- product_data$ordering_cost
 #H.vec <- 0.5 * dei * c.sh
 # based on the previous definition, I think this should be the vector of holding cost multipliers
-H.vec <- 0.1 * product_data$box_cost * dei * .05
+H.vec <- 0.1 * product_data$box_cost * dei * 0.5
 ```
 
 
@@ -422,6 +483,12 @@ reo.id <- order(T.vec)
 T.vec <- T.vec[reo.id]
 c.or <- c.or[reo.id]
 H.vec <- H.vec[reo.id]
+
+cost_cycle.mat <- t(cbind(c.or,H.vec,T.vec))
+costs.cycle <- data.frame(cost_cycle.mat)
+colnames(costs.cycle) <- reo.id 
+rownames(costs.cycle) <- c(  "$c_i^{or}$" ,"$H_i$","$T_i$" )
+kable(costs.cycle ,"pandoc", row.names = T)
 ```
 
 ```{r}
@@ -430,9 +497,12 @@ library(kableExtra)
 res.mat <- t(cbind(c.or/H.vec,(c.or0 + cumsum(c.or))/cumsum(H.vec)))
 df <- data.frame(res.mat)
 colnames(df) <- reo.id 
-rownames(df) <- c(  "$T_i$" ,"$T^C$"  )
+rownames(df) <- c(  "$T_i^2$" ,"$T^C$"  )
 kable(df,"pandoc", row.names = T)
 ```
+
+
+$$B=\sqrt \frac {\sum_{i=0}^n \frac {c_i^{or}}{m_i}}{\sum_{i=0}^n m_i \cdot H_i} $$
 
 
 ```{r}
@@ -444,7 +514,7 @@ id.comb
 B <- min(T.vec) #0.01955164
 # solution with m - integers #######################
 m.vec.int <- round(T.vec/B,0)
-#I need to address this
+
 m.vec.int[1:id.comb] <- 1  
 # re-optimize B for fixed m.vec
 B.int <- sqrt(sum(c.or/m.vec.int)/sum(m.vec.int*H.vec))#0.02014868
@@ -530,7 +600,7 @@ n <- length(product_data$`box ID`)
 c.or0 <- cord
 c.or <- product_data$ordering_cost
 dei <- product_data$demand_per_year
-H.vec <- 0.1 * product_data$box_cost * dei * .05
+H.vec <- 0.1 * product_data$box_cost * dei * 0.5
 
 
 bnotsort <- product_data$b_not_sorting
@@ -803,6 +873,18 @@ kable(cycle.df,"html", row.names = T, escape = F) %>%
 
 *  *Demand vs Quantity*
 
+$bc_i$ which is the capacity of a box for part $i$. 
+$y_i=$ Demand in Years for item $i$
+$yb_i=$ Demand per day in boxes for item $i$.
+$yd_i=$ Demand per day in items for item $i$
+$yb_i= \frac {yd_i}{bc_i} $
+
+$ct =$cycle time is number of days it takes before a new order.
+
+$$ct= \frac {q}{yb_i}= \frac  {m_i \cdot B \cdot y_i}{yb_i} $$
+
+e.g assuming we order 17 items and demand pay day in boxes is 1.6667  this mean it will take about 10 day to make another other.
+
 ```{r}
 # Demand per day in boxes
 #its still okay to leave the values in fraction as we are not ordering now.
@@ -832,11 +914,184 @@ kable(cycle.time,"html", row.names = T, escape = F) %>%
 
 Assuming that demand All Quantity has been supplied for all items in the first cycle
 
-reduce lane assignment while filfilling demand
+reduce lane assignment while fulfilling demand
+
+```{r}
+#cycle_demand== Lot_size_q
+cycle_demand <- product_data$cycle_time_in_days*product_data$deman_per_day_boxes
+
+l.start2 <- (cycle_demand *product_data$b_not_sorting)/rack_length
+l.start2[5]<-1
+l.start2[12]<- 2
+l.start2[20]<- 1
+l.start2[30]<-1
+
+l.start2 <- ceiling(l.start2)
+sum(l.start2)
+```
+
+```{r}
+# assign lane width as names
+#names(l.start2) <- round(product_data$b_sorting/100)*100 
+
+# number of items with lane types 200, 400, 600 that is demand for each lane type
+#ld <- c(sum(l.start2[names(l.start2) == "200"]),
+#sum(l.start2[names(l.start2) == "400"]),
+#sum(l.start2[names(l.start2) == "600"]))
+#ld
+```
+
+*  *Prove that demand is always met*
+
+
+Using (T,S) policy
+
+We are using periodic review as order intervals can be derived from period order frequency $m$ for each of the $i^{th}$ items
+
+* Assuming demand is uniformly distributed thus the same quantity of demand repeats each time.
+
+* Initial stock level for the 62 items are given.
+
+* Each Item has some form of order frequency m going over a time period of 262 days.
+
+* Lead time is zero.
+
+
+
+*Notations and Formulars*
+
+On-hand stock S(t)
+
+Outstanding orders O(t)
+
+Backorders B(t)
+
+Inventory level I(t)= S(t) - B(t): Potentially available units
+
+Inventory position P(t) = I(t) + O(t): basis for ordering decisions.
+
+
+for item 30, we changed the cycle time in days to 39 instead of 42.
+```{r}
+#item 39
+product_data$cycle_time_in_days[30]<- 39
+```
+
+
+
 
 ```{r}
 
+Periodic.inventory <-function(item){
+  
+  #Yt demand
+dem <- product_data$deman_per_day_boxes
+dem[item]
 
+#qt quantity
+quant <- product_data$Lot_size_q
+quant[item]
 
+#Initial Stock level
+stock.level <- (l.start2*rack_length)/product_data$b_not_sorting
+stock.level[item]
+
+#inventory level
+#inventory.level <- inventory.level[t-1]- dem[t]
+
+period.mat <- matrix(0.00000,  nrow = 3,ncol = 262)
+
+colnames(period.mat)<-1:262
+m <- product_data$cycle_time_in_days
+
+#period.mat[3,0]<-  stock.level[1]
+t<- 1
+#for (t in 1:262) {
+while(t<=262){
+  
+  if(item==12){
+    
+    if(t==1){
+    period.mat[1,t]<-dem[item]
+    #period.mat[2,t]<- quant[item]
+    period.mat[3,t]<- stock.level[item] #stock.level[1]
+    
+  }else {
+    period.mat[1,t]<-dem[item]
+    if(t %% floor(m[item])==0){
+      #b<-t+1
+      #print(t+1)
+     period.mat[2,t]<- stock.level[item]-(period.mat[3,t-1]-dem[item])
+     
+     # fill the capacity
+     period.mat[3,t]<- stock.level[item] #quant[item]+period.mat[3,t-1]-dem[item]
+    }else{
+     period.mat[2,t]<- 0
+      period.mat[3,t]<- period.mat[3,t-1]-dem[item]
+    }
+  }
+    
+    
+    
+  }else if(item== 30){
+    
+    
+    if(t==1){
+    period.mat[1,t]<-dem[item]
+    #period.mat[2,t]<- quant[item]
+    period.mat[3,t]<- stock.level[item] #stock.level[1]
+    
+  }else {
+    period.mat[1,t]<-dem[item]
+    if(t %% floor(m[item])==0){
+      #b<-t+1
+      #print(t+1)
+     period.mat[2,t]<- stock.level[item]-(period.mat[3,t-1]-dem[item])
+     
+     # fill the capacity
+     period.mat[3,t]<- stock.level[item] #quant[item]+period.mat[3,t-1]-dem[item]
+    }else{
+     period.mat[2,t]<- 0
+      period.mat[3,t]<- period.mat[3,t-1]-dem[item]
+    }
+  }
+    
+    
+    
+  }else{
+    
+    if(t==1){
+    period.mat[1,t]<-dem[item]
+    #period.mat[2,t]<- quant[item]
+    period.mat[3,t]<- stock.level[item] #stock.level[1]
+    
+  }else {
+    period.mat[1,t]<-dem[item]
+    if(t %% floor(m[item])==1){
+      #b<-t+1
+      #print(t+1)
+     period.mat[2,t]<- stock.level[item]-(period.mat[3,t-1]-dem[item])
+     
+     # fill the capacity
+     period.mat[3,t]<- stock.level[item] #quant[item]+period.mat[3,t-1]-dem[item]
+    }else{
+     period.mat[2,t]<- 0
+      period.mat[3,t]<- period.mat[3,t-1]-dem[item]
+    }
+  }
+    
+  }
+  
+  t=t+1
+  
+}
+
+row.names(period.mat)<- c("yt","qt","lt")  
+  period.mat
+}
+
+as.data.frame(Periodic.inventory(30))
+#stock.level[5]
+#product_data
 ```
 
