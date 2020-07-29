@@ -423,7 +423,7 @@ paste(length(which((round(y.vec.yes.const)>round(y.vec.no.const))==TRUE))," Item
 ```{r}
 #par(mfrow=c(1,1))
 { 
-  plot(x.val,round(y.vec.no.const), xlab ="lot size q", ylab = "total cost", type = "p", lwd =2, ylim=c(12,max(y.vec)), xaxp=c(1, 10, 1) )
+  plot(x.val,round(y.vec.no.const), xlab ="lot size q", ylab = "total cost", type = "p", lwd =2, ylim=c(12,max(y.vec.no.const)), xaxp=c(1, 10, 1) )
   axis(1, 1:62)
 axis(2, 1:62)
 abline(h=1:62, v=1:62, col="gray", lty=3)
@@ -1090,81 +1090,6 @@ while(t<=262){
 }
 
 as.data.frame(Periodic.inventory(30))
-```
-
-
-```{r}
-
-item <- 30
-  #Yt demand
-dem <- product_data$deman_per_day_boxes
-dem[item]
-
-#qt quantity
-quant <- product_data$Lot_size_q
-quant[item]
-
-#Initial Stock level
-stock.level <- (l.start2*rack_length)/product_data$b_not_sorting
-stock.level[item]
-
-#inventory level
-#inventory.level <- inventory.level[t-1]- dem[t]
-
-period.mat <- matrix(0.00000,  nrow = 3,ncol = 262)
-
-colnames(period.mat)<-1:262
-m <- product_data$cycle_time_in_days
-
-
-#row 1
-r=1
-for (t in 1:262) {
-  period.mat[r,t]<- dem[item]
-}
-
-r=2
-for (t in 1:262) {
-    if(t %% floor(m[item])==1){
-      #b<-t+1
-      #print(t+1)
-
-     period.mat[r,t]<- quant[item]
-     
-     # fill the capacity
-     
-     period.mat[3,t]<- stock.level[item] #quant[item]+period.mat[3,t-1]-dem[item]
-    }else{
-     #period.mat[2,t]<- 0
-      period.mat[3,t]<- period.mat[3,t-1]-dem[item]
-    }
-  
-  
-  
-}
-
-r=3
-for (t in 1:262) {
-    if(t %% floor(m[item])==1){
-      #b<-t+1
-      #print(t+1)
-
-     period.mat[2,t]<- quant[item]
-     
-     # fill the capacity
-     
-     period.mat[3,t]<- stock.level[item] #quant[item]+period.mat[3,t-1]-dem[item]
-    }else{
-     #period.mat[2,t]<- 0
-      period.mat[3,t]<- period.mat[3,t-1]-dem[item]
-    }
-  
-  
-  
-}
-
-
-period.mat
 ```
 
 
