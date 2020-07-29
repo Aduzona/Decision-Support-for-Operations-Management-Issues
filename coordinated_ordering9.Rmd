@@ -384,6 +384,63 @@ product_data$demand_per_year  #
 floor(copt_sol$solution)
 ```
 
+Plot EOQ cost vs cost
+
+cost function per item
+$$ C(q_i) \rightarrow (c^{-or} +  \frac {y_i}{q_i} \cdot c_i^{or}) + (h \cdot  \frac {q_i}{2}\cdot pr_i ) $$
+
+```{r}
+#EOQ cost
+
+#with no constraint
+paste("with no capacity constraint, cost is  €", round(obj.fun(product_data$eoq.max)))#173539.2
+
+#with constraint
+paste("with capacity constraint, cost is  €",round(obj.fun(copt_sol$solution))) #202866.4
+
+paste("It costs €",round(obj.fun(copt_sol$solution))-round(obj.fun(product_data$eoq.max))," extra due to lack of capacity")
+
+```
+The above result shows that If there is no capacity constraint, the cost will be lower. 
+
+
+```{r}
+x.val <- seq.int(1,62, length.out = 62)
+
+cost.fun <- function(q, d= dei, c.or = cori, c.h = h*box_cost  ){
+  (1500 +(dei/q)*c.or)+ (c.h*(q/2))
+} 
+
+y.vec.no.const <- cost.fun(q=product_data$eoq.max)
+y.vec.yes.const<- cost.fun(copt_sol$solution)
+
+paste(length(which((round(y.vec.yes.const)>round(y.vec.no.const))==TRUE))," Items costs more when capacity becomes a problem")
+
+
+```
+
+
+```{r}
+#par(mfrow=c(1,1))
+{ 
+  plot(x.val,round(y.vec.no.const), xlab ="lot size q", ylab = "total cost", type = "p", lwd =2, ylim=c(12,max(y.vec)), xaxp=c(1, 10, 1) )
+  axis(1, 1:62)
+axis(2, 1:62)
+abline(h=1:62, v=1:62, col="gray", lty=3)
+
+points(x=x.val,y=round(y.vec.yes.const),lwd=2, col="blue")
+
+legend("bottomleft",lty = c(1,1),col = c("black","blue"), legend = c("No constraint","with constraint"), bty="n" , horiz = T)
+}
+
+
+
+```
+
+* Notice that 34 blue dots which represents the more expensive items when capacity is accounted for.
+
+* Also the notice , for most items on blue larger than black (non constraint items) the difference is much larger. the reverse is the case when black is larger than blue.
+
 
 # Joint Ordering (JO)
 
@@ -848,7 +905,13 @@ l.start2[20]<- 1
 l.start2[30]<-1
 
 #l.start2 <- ceiling(l.start)
+vec<-unlist(l.start2)
+
+product_data$number_of_lanes <- vec
+
 l.start2
+
+
 ```
 
 ```{r}
@@ -909,6 +972,14 @@ Reason for TS policy is that we can not exceed capacity, thus we order upto Lane
 
 
 ```{r}
+#install.packages("writexl")
+library("writexl")
+
+#write_xlsx(product_data,"C:\\Users\\...\\product_data.xlsx")
+
+```
+
+```{r}
 Periodic.inventory <-function(item){
   
   #Yt demand
@@ -920,7 +991,7 @@ quant <- product_data$Lot_size_q
 quant[item]
 
 #Initial Stock level
-stock.level <- (l.start2*rack_length)/product_data$b_not_sorting
+stock.level <- (product_data$number_of_lanes*rack_length)/product_data$b_not_sorting
 stock.level[item]
 
 #inventory level
@@ -1014,11 +1085,86 @@ while(t<=262){
   
   
   row.names(period.mat)<- c("yt","qt","lt")  
-  period.mat
+  return (period.mat)
   
 }
 
 as.data.frame(Periodic.inventory(30))
+```
+
+
+```{r}
+
+item <- 30
+  #Yt demand
+dem <- product_data$deman_per_day_boxes
+dem[item]
+
+#qt quantity
+quant <- product_data$Lot_size_q
+quant[item]
+
+#Initial Stock level
+stock.level <- (l.start2*rack_length)/product_data$b_not_sorting
+stock.level[item]
+
+#inventory level
+#inventory.level <- inventory.level[t-1]- dem[t]
+
+period.mat <- matrix(0.00000,  nrow = 3,ncol = 262)
+
+colnames(period.mat)<-1:262
+m <- product_data$cycle_time_in_days
+
+
+#row 1
+r=1
+for (t in 1:262) {
+  period.mat[r,t]<- dem[item]
+}
+
+r=2
+for (t in 1:262) {
+    if(t %% floor(m[item])==1){
+      #b<-t+1
+      #print(t+1)
+
+     period.mat[r,t]<- quant[item]
+     
+     # fill the capacity
+     
+     period.mat[3,t]<- stock.level[item] #quant[item]+period.mat[3,t-1]-dem[item]
+    }else{
+     #period.mat[2,t]<- 0
+      period.mat[3,t]<- period.mat[3,t-1]-dem[item]
+    }
+  
+  
+  
+}
+
+r=3
+for (t in 1:262) {
+    if(t %% floor(m[item])==1){
+      #b<-t+1
+      #print(t+1)
+
+     period.mat[2,t]<- quant[item]
+     
+     # fill the capacity
+     
+     period.mat[3,t]<- stock.level[item] #quant[item]+period.mat[3,t-1]-dem[item]
+    }else{
+     #period.mat[2,t]<- 0
+      period.mat[3,t]<- period.mat[3,t-1]-dem[item]
+    }
+  
+  
+  
+}
+
+
+period.mat
 ```
 
 

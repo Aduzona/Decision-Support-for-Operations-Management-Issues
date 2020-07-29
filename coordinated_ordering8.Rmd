@@ -1008,61 +1008,9 @@ m <- product_data$cycle_time_in_days
 t<- 1
 #for (t in 1:262) {
 while(t<=262){
-  
-  if(item==12){
-    
-    if(t==1){
+  if(t==1){
     period.mat[1,t]<-dem[item]
-    #period.mat[2,t]<- quant[item]
-    period.mat[3,t]<- stock.level[item] #stock.level[1]
-    
-  }else {
-    period.mat[1,t]<-dem[item]
-    if(t %% floor(m[item])==0){
-      #b<-t+1
-      #print(t+1)
-     period.mat[2,t]<- stock.level[item]-(period.mat[3,t-1]-dem[item])
-     
-     # fill the capacity
-     period.mat[3,t]<- stock.level[item] #quant[item]+period.mat[3,t-1]-dem[item]
-    }else{
-     period.mat[2,t]<- 0
-      period.mat[3,t]<- period.mat[3,t-1]-dem[item]
-    }
-  }
-    
-    
-    
-  }else if(item== 30){
-    
-    
-    if(t==1){
-    period.mat[1,t]<-dem[item]
-    #period.mat[2,t]<- quant[item]
-    period.mat[3,t]<- stock.level[item] #stock.level[1]
-    
-  }else {
-    period.mat[1,t]<-dem[item]
-    if(t %% floor(m[item])==0){
-      #b<-t+1
-      #print(t+1)
-     period.mat[2,t]<- stock.level[item]-(period.mat[3,t-1]-dem[item])
-     
-     # fill the capacity
-     period.mat[3,t]<- stock.level[item] #quant[item]+period.mat[3,t-1]-dem[item]
-    }else{
-     period.mat[2,t]<- 0
-      period.mat[3,t]<- period.mat[3,t-1]-dem[item]
-    }
-  }
-    
-    
-    
-  }else{
-    
-    if(t==1){
-    period.mat[1,t]<-dem[item]
-    #period.mat[2,t]<- quant[item]
+    period.mat[2,t]<- quant[item]
     period.mat[3,t]<- stock.level[item] #stock.level[1]
     
   }else {
@@ -1070,7 +1018,7 @@ while(t<=262){
     if(t %% floor(m[item])==1){
       #b<-t+1
       #print(t+1)
-     period.mat[2,t]<- stock.level[item]-(period.mat[3,t-1]-dem[item])
+     period.mat[2,t]<- quant[item]
      
      # fill the capacity
      period.mat[3,t]<- stock.level[item] #quant[item]+period.mat[3,t-1]-dem[item]
@@ -1079,19 +1027,14 @@ while(t<=262){
       period.mat[3,t]<- period.mat[3,t-1]-dem[item]
     }
   }
-    
-  }
-  
   t=t+1
   
 }
 
-row.names(period.mat)<- c("yt","qt","lt")  
-  period.mat
+period.mat
+  
 }
 
-as.data.frame(Periodic.inventory(30))
-#stock.level[5]
-#product_data
+Periodic.inventory(2)
 ```
 
