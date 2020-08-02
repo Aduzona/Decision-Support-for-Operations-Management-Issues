@@ -1,17 +1,17 @@
 ---
-title: "coordinated_ordering9"
+title: "coordinated_ordering10"
 author: "GroupB"
-date: "28/07/2020"
+date: "02/08/2020"
 output:
+  word_document:
+    toc: yes
+  pdf_document: default
   html_document:
     df_print: paged
     number_sections: no
     toc: yes
     toc_float: yes
     code_folding: "hide"
-  pdf_document: default
-  word_document:
-    toc: yes
 always_allow_html: true
 ---
 
@@ -24,7 +24,7 @@ library(knitr)
 
 # Data preparation 
 
-```{r}
+```{r, include=FALSE, cache=F}
 library(readxl)
 
 product_data <- read_excel("Data_ordering.xlsx",sheet = "product data")
@@ -54,7 +54,7 @@ $pr_i = box\_cost=$ value of box
 
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 
 product_data$demand_per_year= ceiling((product_data$`demand per day` *262)/ product_data$`pieces/box`) 
 
@@ -91,7 +91,7 @@ $$ q_i^* = \sqrt \frac{2 \cdot y_i \cdot (c_i^{or})} {pr_i \cdot h}$$
 ## EOQ modelling
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 #dei= demand_per_year, cori= ordering cost for box i
 #cord= ordering cost, pri= box cost, h= interest rate
 
@@ -120,7 +120,7 @@ $b_i^{-1}=$if sorted by length then the value is width and vice versa, used for 
 
 Add $b_i$ and $b_i^{-1}$ to product_data table
 
-```{r}
+```{r, include=FALSE, cache=F}
 # constraints #####################################
 # this can be formulated more elegantly, but it works and that suffices
 b_sorting <- double(length(product_data$`box ID`)) 
@@ -169,7 +169,7 @@ $$lane_i=q_i \cdot \frac {b_i^{-1}}{rack_{length}}=214 \cdot \frac {297}{6000}=1
 
 $$lane_i= \left\lceil\frac{b^{-1}_i \cdot q_i}{rl} \right \rceil$$
 
-```{r}
+```{r, include=FALSE, cache=F}
 lane <- ceiling(product_data$eoq * (product_data$b_not_sorting/rack_length))
 lane
 ```
@@ -186,13 +186,13 @@ $$rack_{total_{Width}}=(rack_{width} \times 4 \times 8)$$
 
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 rack_total_width <-51200  #rack_width * 4 * 8
 rack_total_width #56000
 ```
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 lane.min <- ceiling(product_data$eoq.min * product_data$b_not_sorting / rack_length)
 lane.max <- ceiling(product_data$eoq.max * product_data$b_not_sorting / rack_length)
 
@@ -209,7 +209,7 @@ relative overflow in %
 
 $$\frac{[\sum_{i=1}^n lane_i \cdot b_i]- rack_{{total}_{width}}} {rack_{{total}_{width}} } \cdot 100$$
 
-```{r}
+```{r, include=FALSE, cache=F}
 # overflow in mm
 sum(lane.min*product_data$b_sorting) - rack_total_width
 sum(lane.max*product_data$b_sorting) - rack_total_width
@@ -225,7 +225,7 @@ Please note the coefficients are  are different for every ith item except rackle
 $$\sum_{i=1}^{n=62}lane_i \cdot b_i\le rack_{Total_{width}}$$ 
 $$\sum_{i=1}^{n=62} q_i \cdot \frac {b_i^{-1} \cdot b_i}{rack_{length}} \le rack_{Total_{width}} \quad \quad (1)$$
 
-```{r}
+```{r, include=FALSE, cache=F}
 #get the with of the lanes in mm
 rack_width_occupied=sum(lane.min*product_data$b_sorting)
 rack_width_occupied
@@ -246,7 +246,8 @@ Summation of lanes can simply be:
 $$lanes_i \cdot b_i= 10.593 \cdot 396=4194.828$$
 Using equation (1) to prove this concept.
 
-$$214 \cdot \frac {396 \cdot 297}{6000}=4194.828 \\ b_i= \frac {4194.828}{10.593}=396$$
+$$214 \cdot \frac {396 \cdot 297}{6000}=4194.828 $$
+$$ b_i= \frac {4194.828}{10.593}=396$$
 
 (D) Adjust Q by reducing it:
 
@@ -264,7 +265,7 @@ $$\sum_{i=1}^{n=62} q_i \cdot \frac {b_i^{-1} \cdot b_i}{rack_{length}} \le rack
 
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 library(ROI)
 library(ROI.plugin.alabama)
 
@@ -294,7 +295,7 @@ const.fun(product_data$eoq.min/10) -  rack_total_width
 
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 qopt <- OP(
   objective = F_objective(F=obj.fun ,n=n),
   types = rep("C",n),
@@ -315,7 +316,7 @@ round(min(product_data$eoq.max)/10) #15
 
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 copt_sol <- ROI_solve(qopt, start = rep(min(product_data$eoq.max)/10,n), solver = "alabama" )
 # always check whether the algorithm converged
 copt_sol# The objective value is: 101625.9
@@ -339,7 +340,7 @@ removing waste of 150 for every 32 levels
 
 ## No constraint
 
-```{r}
+```{r, include=FALSE, cache=F}
 
 rack_total_width <- 51200
 qopt1 <- OP(
@@ -361,7 +362,7 @@ copt_sol1$objval
 Remember, $1500*62$  was dropped from the objective function as it is not decision relevant.
 *  *Total costs using EOQ*
 This has no constraint.
-```{r}
+```{r, include=FALSE, cache=F}
 obj.fun <- function(q, d= dei, c.or = cori, c.h = h*box_cost  ) (1500*62)+(sum((dei/q)*c.or)+ sum(c.h*(q/2)))
 obj.fun(product_data$eoq.max)#172279.7
 ```
@@ -369,7 +370,7 @@ obj.fun(product_data$eoq.max)#172279.7
 
 *  *Total costs with Capacity  constraint Optimized*
 
-```{r}
+```{r, include=FALSE, cache=F}
 
 const.fun(copt_sol$solution)#51132
 const.fun(floor(copt_sol$solution))#50340  we rounded down to avoid exceeding capacity
@@ -384,7 +385,7 @@ obj.fun(floor(copt_sol$solution))#205079.8 rounded q values
 
 *  *Total costs with no Capacity  constraint Optimized*
 This is using EOQ.min
-```{r}
+```{r, include=FALSE, cache=F}
 obj.fun(copt_sol1$solution)#124505.1
 obj.fun(floor(copt_sol1$solution))#124508.6 rounded q values
 
@@ -393,7 +394,7 @@ obj.fun(floor(copt_sol1$solution))#124508.6 rounded q values
 
 Optimum costs with no capacity constraint using EOQ.max considers is €172279.7, with no capacity constraint optimized using EOQ.min is €124508.6, with capacity constraint, it costs €205079.8 This cost is expected to be higher when capacity constraint is included, as limited capacity will not allow to take advantage of cost savings.
 
-```{r}
+```{r, include=FALSE, cache=F}
 # demand vs quantity
 
 product_data$`demand per day`
@@ -403,7 +404,7 @@ product_data$demand_per_year  #
 ```
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 floor(copt_sol1$solution)#  optimum quantities with no capacity constraint same as eoq.min 
 floor(copt_sol$solution) # optimum quantities with capacity constraint
 ```
@@ -413,7 +414,7 @@ Plot EOQ cost vs cost
 cost function per item
 $$ C(q_i) \rightarrow (c^{-or} +  \frac {y_i}{q_i} \cdot c_i^{or}) + (h \cdot  \frac {q_i}{2}\cdot pr_i ) $$
 
-```{r}
+```{r, include=FALSE, cache=F}
 #EOQ cost
 
 #with no constraint
@@ -433,7 +434,7 @@ paste("It costs €",round(obj.fun(copt_sol$solution))-round(obj.fun(product_dat
 The above result shows that If there is no capacity constraint, the cost will be lower. 
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 x.val <- seq.int(1,62, length.out = 62)
 
 cost.fun <- function(q, d= dei, c.or = cori, c.h = h*box_cost  ){
@@ -449,7 +450,7 @@ paste(length(which((round(y.vec.yes.const)>=round(y.vec.no.const))==TRUE))," Ite
 ```
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 #par(mfrow=c(1,1))
 { 
   plot(x.val,round(y.vec.no.const), xlab ="lot size q", ylab = "total cost", type = "p", lwd =2, ylim=c(12,max(y.vec.no.const)), xaxp=c(1, 10, 1) )
@@ -486,7 +487,7 @@ Assumptions:
 - Cycle time of product $i$: $T_i$
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 n <- length(product_data$`box ID`)
 c.or0 <- cord
 c.or <- product_data$ordering_cost
@@ -501,11 +502,15 @@ H.vec <- 0.1 * product_data$box_cost * dei * 0.5
 - $B=$basic cycle time
 - $H_i=0.5 \cdot y_i \cdot c_i^{sh}$
 - $H_0=0$  Holding cost multiplier are $H_0 \space and  \space H_i$
-- $$C(m_i B)=\sum_{i=0}^n (\frac {c_i^{or}}{m_i \cdot B}+H_i \cdot m_i \cdot B) == \frac {c_o^{or}}{B}+ \sum_{i=1}^n (\frac {c_i^{or}}{m_i \cdot B}+H_i \cdot m_i \cdot B)  \\ subject \space to: \quad \quad \quad \quad \quad \quad \quad \quad \quad  \\ m_i \ge m_0 \quad \forall i >0 \\m_i \in \mathbb N \qquad \forall i   $$
+- $$C(m_i B)=\sum_{i=0}^n (\frac {c_i^{or}}{m_i \cdot B}+H_i \cdot m_i \cdot B) == \frac {c_o^{or}}{B}+ \sum_{i=1}^n (\frac {c_i^{or}}{m_i \cdot B}+H_i \cdot m_i \cdot B)$$
+
+$$ subject \space to: \quad \quad \quad \quad \quad \quad \quad \quad \quad$$
+$$ m_i \ge m_0 \quad \forall i >0 $$
+$$m_i \in \mathbb N \qquad \forall i   $$
 
 --> an important side note is that the JRP is basically a quite standard EOQ problem which uses the substitution $T_i = \frac{q_i}{y_i}$, i.e., $q_i = T_i \cdot y_i$. Then, you substitute $T_i = m_i \cdot B$ ans result in the JRP (adding the common ordering cost).
 
-```{r}
+```{r, include=FALSE, cache=F}
 jrp.obj.fun <- function(m , B, cor, Hvec, cor0) cor0/B + sum(cor/B/m) + sum(Hvec*B*m)
 ```
 
@@ -514,7 +519,7 @@ jrp.obj.fun <- function(m , B, cor, Hvec, cor0) cor0/B + sum(cor/B/m) + sum(Hvec
 - *Cycle Time*
 
 we determine $T_i=\sqrt (\frac {c_i^{or}}{H_i})$ and $T^C=\frac {\sum_{j=0}^{i´} c_j^{or}}{\sum_{j=0}^{i´}H_j}$
-```{r}
+```{r, include=FALSE, cache=F}
 # calculate cycle times
 T.vec <- sqrt(c.or/H.vec)
 # order products
@@ -531,7 +536,7 @@ kable(costs.cycle ,"pandoc", row.names = T)
 ```
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 library(kableExtra)
 # calculate T^2 and cumu. cost shares
 res.mat <- t(cbind(c.or/H.vec,(c.or0 + cumsum(c.or))/cumsum(H.vec)))
@@ -545,7 +550,7 @@ kable(df,"pandoc", row.names = T)
 $$B=\sqrt \frac {\sum_{i=0}^n \frac {c_i^{or}}{m_i}}{\sum_{i=0}^n m_i \cdot H_i} $$
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 # identify break
 which(res.mat[1,] > res.mat[2,])# break occured after 13
 id.comb <- min(which(res.mat[1,] > res.mat[2,])) - 1 #3
@@ -570,7 +575,7 @@ Reoptimizing basic cycle time yields $B=$  $`r round(B.int,2)`$ and the total co
 
 The order quantities are given by multiplying the cycle times $T_i$ with demand rates $y_i$, i.e. $q_i = T_i \cdot y_i$ such that
 
-```{r}
+```{r, include=FALSE, cache=F}
 dei <- dei[reo.id]
 df <- data.frame(rbind( m.vec.int, round(m.vec.int*B, 2), round(m.vec.int*B*dei, 2) ))
 colnames(df) <- reo.id 
@@ -580,7 +585,7 @@ kable(df,"pandoc", row.names = T)
 
 --> Now the question is: Is this feasible? --> no:
 
-```{r}
+```{r, include=FALSE, cache=F}
 q.vec <- m.vec.int*B*dei
 paste(round(c.cost.int)," is total cost with no capacity constraint")# 49943
 const.fun(q.vec) > rack_total_width
@@ -594,7 +599,7 @@ When you try to optimize the JRP directly, without introducing the substitution 
 
 $$C(T)=\sum_{i=0}^n (\frac {c_i^{or}}{T}+H_i \cdot T) == \sum_{i=1}^n \frac {c_o^{or}}{T}+ \sum_{i=1}^n (\frac {c_i^{or}}{T}+H_i \cdot T)  $$
 
-```{r}
+```{r, include=FALSE, cache=F}
 library(ROI)
 jrp.obj.fun2 <- function(Tvec, cor, Hvec, cor0) sum(cor0/Tvec) + sum(cor/Tvec) + sum(Hvec*Tvec)
 # you need to initialize the parameters in the objective function --> Tvec is to be optimized over, the rest is given
@@ -617,7 +622,7 @@ copt_sol2$solution
 
 ```
 
-```{r}
+```{r, include=FALSE, cache=F}
 m.vec.int*B*dei
 
 paste(round(copt_sol2$objval), "Total cost with no Constraint for T")
@@ -640,7 +645,7 @@ $$ \sum_{i=1}^n b_i \cdot \left\lceil\frac{b^{-1}_i \cdot T_i \cdot y_i}{rl} \ri
 
 Thus, you can change the constraint function quite easily
 
-```{r}
+```{r, include=FALSE, cache=F}
 
 # we reinitialize the vectors
 n <- length(product_data$`box ID`)
@@ -677,7 +682,7 @@ Then, you can use the original JRP function and update the model by including th
 
 $rack_{Totalwidth}=51200$
 
-```{r}
+```{r, include=FALSE, cache=F}
 
 #rack_total_width<-51200
 
@@ -712,7 +717,7 @@ const.fun2(m= copt_sol3$solution) <= rack_total_width
 ```
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 # not feasible
 const.fun2(round(copt_sol3$solution)) <= rack_total_width
 # feasible
@@ -725,7 +730,7 @@ q.start
 ```
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 #Order according to m in ascending order
 #reo.id <- order(m.start)
 #dei <- dei[reo.id]
@@ -738,7 +743,7 @@ kable(df2,"pandoc", row.names = T)
 ```
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 
 library(gtools)
 df2<-df2[mixedorder(colnames(df2))]
@@ -746,7 +751,7 @@ df2
 ```
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 
 q.start<- as.vector(df2[3,1:62])
 q.start
@@ -760,7 +765,7 @@ As you rightly point out you need to calculate the number of lanes $l(q_i)$ requ
 $$l(q_i) =\left\lceil \frac{q_i}{n_i} \right\rceil$$
 whereby $n_i$ is the number of boxes per lane dedicated to product $i$. I.e., $$n_i = \left\lfloor \frac{rl}{b_i^{-1}} \right\rfloor$$. Thus, for the solution of the JRP we have:
 
-```{r}
+```{r, include=FALSE, cache=F}
 l.start <- ceiling(q.start/floor(rack_length/product_data$b_not_sorting))
 rownames(l.start) <- "lanes"
 l.start
@@ -770,12 +775,12 @@ l.start
 
 Now, these lanes have to be assigned to the levels of the shelves. Therefore, we first need to determine the types of lanes required. The lanes are just described by their width. Due to the safety margins we should round the lane width to full centimeter. I.e., we need to assign lanes with the following widths
 
-```{r}
+```{r, include=FALSE, cache=F}
 unique(round(product_data$b_sorting/100)*100)
 ```
 Now comes the tricky part: We have to decide how many lanes of a certain width should be assigned for each level. Luckily, there is only a small number of useful patterns of lanes per level. To be precise there are 9 efficient patterns to arrange these 3 lane types (assuming we use each level exhaustively):
 
-```{r}
+```{r, include=FALSE, cache=F}
 patterns <- rbind(
 c(8,0,0),
 c(0,4,0),
@@ -795,7 +800,7 @@ patterns
 
 Let $p_{k,j}$ indicate the number of lanes of type $j$ associated to pattern $k$. Now we need to assess the number of lanes per required of each type. As outlined above, we know the number of lanes per product $l(q_i)$, thus we can deduce the demand for lane type $j$ ($ld_j$) by summing up the $l(q_i)$  for each lane type,  i.e., $ld_j = \sum_{i \in P|b_i=j} l(q_i)$:
 
-```{r}
+```{r, include=FALSE, cache=F}
 # assign lane width as names
 names(l.start) <- round(product_data$b_sorting/100)*100 
 
@@ -814,7 +819,7 @@ Need to reduce 70 units to 64
 
 ## Illustration
 
-```{r}
+```{r, include=FALSE, cache=F}
 
 #m.start
 
@@ -891,12 +896,13 @@ $yb_i= \frac {yd_i}{bc_i} $
 $ct =$cycle time is number of days it takes before a new order.
 
 E.g Item 4 has lot size quantity of 18 boxes, and daily demand in boxes is 1.2
-$$ct= \frac {q}{yb_i}= \frac  {m_i \cdot B \cdot y_i}{yb_i} \\ ct= \frac {18}{1.2}=15days$$
+$$ct= \frac {q}{yb_i}= \frac  {m_i \cdot B \cdot y_i}{yb_i} $$
+$$ ct= \frac {18}{1.2}=15days$$
 The example above shows that for item 4, it takes about 15 day to make another order.
 
 another example, assuming we order 17 items and demand pay day in boxes is 1.6667  this mean it will take about 10 day to make another other.
 
-```{r}
+```{r, include=FALSE, cache=F}
 # Demand per day in boxes
 #its still okay to leave the values in fraction as we are not ordering now.
 product_data$deman_per_day_boxes <- product_data$`demand per day`/product_data$`pieces/box`
@@ -906,7 +912,7 @@ product_data$cycle_time_in_days <- (m.start*B.start*product_data$demand_per_year
 ```
 
 *  *Convert Cycles to days*
-```{r}
+```{r, include=FALSE, cache=F}
 #min(product_data$cycle_time_in_days)#2.472104 days is equivalent to M=1
 #sort(sort(unique(product_data$Order_frequency_M)))
 #sort(unique(product_data$Order_frequency_M))*min(product_data$cycle_time_in_days)
@@ -929,7 +935,7 @@ Assuming that demand All Quantity has been supplied for all items in the first c
 
 reduce lane assignment while fulfilling demand
 
-```{r}
+```{r, include=FALSE, cache=F}
 #cycle_demand== Lot_size_q
 #cycle_demand <- product_data$cycle_time_in_days*product_data$deman_per_day_boxes
 
@@ -952,7 +958,7 @@ l.start2
 
 ```
 
-```{r}
+```{r, include=FALSE, cache=F}
 # assign lane width as names
 names(l.start2) <- round(product_data$b_sorting/100)*100 
 
@@ -1002,7 +1008,7 @@ Inventory level $I_t= I_{t-1}-y_t$ available units
 
 
 for item 30, we changed the cycle time in days to 39 instead of 42.
-```{r}
+```{r, include=FALSE, cache=F}
 #item 39
 product_data$cycle_time_in_days[30]<- 39
 ```
@@ -1013,7 +1019,7 @@ Reason for TS policy is that we can not exceed capacity, thus we order upto Lane
 
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 #install.packages("writexl")
 #library("writexl")
 
@@ -1025,7 +1031,7 @@ stock.level <- (product_data$number_of_lanes*rack_length)/product_data$b_not_sor
 floor(stock.level)
 ```
 
-```{r}
+```{r, include=FALSE, cache=F}
 Periodic.inventory <-function(item){
   
   #Yt demand
@@ -1140,7 +1146,7 @@ period.df
 ```
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 Ave.phy.inv <-c(vector(),1:62)
 alpha.sl <- c(vector(),1:62)
 for (i in 1:62) {
@@ -1173,12 +1179,12 @@ As seen from the result, only Items 12 and 30 has an $\alpha$ service level of 9
 
 To fulfill lane demands from the items $ld$ are 15 lanes with with 200, 15 lanes with width 400 and 64 lanes with width 600. To fulfull this demand, only 2 patterns are needed.
 
-```{r}
+```{r, include=FALSE, cache=F}
 patterns[3:4,]
 ```
 Assign Patterns
 
-```{r}
+```{r, include=FALSE, cache=F}
 
 fitted.pattern <- patterns[3:4,]
 # loop through 32 levels to assign patterns
@@ -1216,7 +1222,7 @@ Procedure:
 $d_i=$consumption and $p_i=$ price of material $i \in I$, then
 1. Calculate value share of material $i:v_i=\frac {d_i\cdot p_i}{\sum_{j\in I}d_j \cdot p_j}$
 
-```{r}
+```{r, include=FALSE, cache=F}
 #remember box cost is demand times price
 value.share <- product_data$box_cost/sum(product_data$box_cost)
 #as.data.frame(value.share)  
@@ -1226,7 +1232,7 @@ value.share <- product_data$box_cost/sum(product_data$box_cost)
 2. Order materials descendingly according to value share: $v_1^´ \ge v_2^´ \ge...\ge v_{|I|}^´ $
 
 $v_i^´=ord.share$
-```{r}
+```{r, include=FALSE, cache=F}
 #cycle.time <- data.frame(rbind(sort(unique(product_data$Order_frequency_M))*min(product_data$cycle_time_in_days)   ))
 
 #colnames(cycle.time) <- sort(unique(product_data$Order_frequency_M))
@@ -1258,7 +1264,7 @@ val.vec.ord <- sort(value.share,decreasing = T)
 3. Calculate cumulative ordered value share of each material: $\tilde v_i= \sum_{j=1}^i v_j^´$ 
 
 $\tilde v_i= cum.val.vec.ord$
-```{r}
+```{r, include=FALSE, cache=F}
 cum.val.vec.ord <-cumsum(val.vec.ord)
 rel.cum.val.vec.ord <- cum.val.vec.ord / sum(val.vec.ord)
 
@@ -1267,7 +1273,7 @@ rel.cum.val.vec.ord
 
 4. Categorize materials according to $\tilde v_i$ into classes A,B and C by class limits e.g 80,95,100
 
-```{r}
+```{r, include=FALSE, cache=F}
 class.vec <- rep("A", n)
 class.vec[rel.cum.val.vec.ord > 0.8 & rel.cum.val.vec.ord <= 0.95 ] <- "B"
 class.vec[rel.cum.val.vec.ord > 0.95 ] <- "C"
@@ -1277,7 +1283,7 @@ tab <- data.frame("ord.material.id" = id.vec.ord, "price (ord.)" = product_data$
 kable(tab, digits = c(0,2,0,2,2,1,0),  caption = "ABC analysis results (values classified by boxes)", format = "pandoc")
 ```
 
-```{r}
+```{r, include=FALSE, cache=F}
 # a plot
 plot(1:n, rel.cum.val.vec.ord, type="b", xaxt = "n", pch =16, xlab = "material id", ylab = "rel. cum. value share")
 axis(1, at = 1:n, labels = id.vec.ord)
@@ -1316,7 +1322,7 @@ We will use these thresholds :  A...2 per., B..4 per. and C..6 per.
 2. Inventory quatlity ratio $IQR_i= \frac {to_i}{s_i} \rightarrow $ the closer to 1, the better.
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 n <- 62
 set.seed(123456)
 ave.stock.vec <- floor(stock.level)
@@ -1347,7 +1353,7 @@ kable(tab, digits = c(0,1,1,1,1),  caption = "Life-cycle analysis for materials 
 
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 names(iqr.vec2) <- 1:n
 
 names(rel.cum.val.vec.ord)<- id.vec.ord
@@ -1359,7 +1365,7 @@ text(x = c(60,rep(100,3)) , y = c(0.2,.5,.875,.99), labels = c("fast mover", LET
 
 ## Cost Analysis
 
-```{r}
+```{r, include=FALSE, cache=F}
 #with no constraint
 paste("Seperate Ordering with no capacity constraint, cost is  €", round(obj.fun(product_data$eoq.max)))#172280
 
@@ -1391,7 +1397,7 @@ kable(cost.matrix,digits = c(0,1,1,1),caption = "Total cost Matrix", row.names =
 
 in the matrix above, it costs more to When capacity is an issue for both seperate Ordering and Joint Ordering. When non capacited ordering, there is far more cost savings than Separate ordering.
 
-```{r}
+```{r, include=FALSE, cache=F}
 #?seq.int
 #Seperate ordering sequence
 
@@ -1435,7 +1441,7 @@ so.df
 ```
 
 As seen from the table, with no constraint you tend to order far more than constrained. 
-```{r}
+```{r, include=FALSE, cache=F}
 #SO
 so.cost.vec <- c(numeric(0),1:40)
 for (i in 1:40) {
@@ -1456,7 +1462,7 @@ Without considering capacity constraint, Using some examples for illustration,fo
 When ordering cost of 1500 and capacity for items 1 and 2 has order quantities of 19 and 20 respectively, thus costing far more as seen in the graph above. This is largely due to lack of capacity constraint because so little is ordered, that 1500 is paided all the time order takes place for each items. 
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 
 jrp.mat<- matrix(0,nrow = 62, ncol = 40)
 
@@ -1480,7 +1486,7 @@ Since we have limited capacity, we will order frequently and therefore will not 
 
 
 
-```{r}
+```{r, include=FALSE, cache=F}
 
 
 
