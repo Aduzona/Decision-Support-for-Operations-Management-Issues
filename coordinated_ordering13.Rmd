@@ -4,9 +4,15 @@ author: "GroupB"
 date: "06/08/2020"
 output:
   html_document:
+    df_print: paged
+    number_sections: no
+    toc: yes
+    toc_float: yes
+    code_folding: "hide"
   pdf_document: default
   word_document:
     toc: yes
+always_allow_html: true
 ---
 
 
@@ -1508,10 +1514,11 @@ kable(period.df[,1:7],caption = "Periodic Inventory TS Policy", row.names = T, e
 
 
 #period.df[3,]
-item <- 17
+item <- 4
 par(family="serif", mar = c(4.25,4.25,.1,.1), bg ="white")
 {plot(Periodic.inventory(item)[3,], xlab="Time", type="l", lwd=2, ylab="demand", cex.lab = 1.5, cex.axis = 1.25)
-abline(h=stock.level[item], col="red", lwd=2)}
+abline(h=stock.level[item], col="red", lwd=2)
+title(main=paste("item ",item),outer = TRUE)}
 #dev.off()
 
 #res <- tS.lager.wbz(dem = y.com.ts, t=3, wbz=1, l.ini = 150, S = 200)
@@ -1527,6 +1534,9 @@ Using Item 4 as an example, $S=30$ depicted by the red horizontal line, as seen,
 
 From Illustration table, Using S,Q policy and Applying JRP. We are lowering the safety stock
 
+If this where to be sq policy, we only order when the quantity is zero.
+
+* We assume that 
 
 
 Check if Lot size q is less than or equal to Stock level
@@ -1593,9 +1603,14 @@ while(t<=262){
     if(t %% floor(m[item])==1){
       #b<-t+1
       #print(t+1)
-     continous.mat[2,t]<- quant[item]
      
-     # fill the capacity
+     
+     
+     if(continous.mat[3,t-1]>= continous.mat[1,t-1]){
+       continous.mat[2,t]<- quant[item]
+     }else{
+       continous.mat[2,t]<- quant[item]-(continous.mat[1,t-1]-continous.mat[3,t-1])
+     }
      continous.mat[3,t]<- quant[item]-dem[item] #period.mat[3,t-1] + quant[item]-dem[item]
     }else{
      continous.mat[2,t]<- 0
@@ -1618,8 +1633,11 @@ while(t<=262){
     if(t %% floor(m[item])==1){
       #b<-t+1
       #print(t+1)
-     continous.mat[2,t]<- stock.level[item]
-     
+      if(continous.mat[3,t-1]>= continous.mat[1,t-1]){
+       continous.mat[2,t]<- quant[item]
+     }else{
+       continous.mat[2,t]<- quant[item]-(continous.mat[1,t-1]-continous.mat[3,t-1])
+     }
      # fill the capacity
      continous.mat[3,t]<- stock.level[item]-dem[item] #period.mat[3,t-1] + quant[item]-dem[item]
     }else{
@@ -1645,11 +1663,12 @@ while(t<=262){
   
 }
 
-continous.df <- as.data.frame(continous.inventory(4))
+item<- 8
+continous.df <- as.data.frame(continous.inventory(item))
 row.names(period.df)<- c("yt","qt","lt")
 
 #[,1:11]
-kable(continous.df,caption = "Continous Review Inventory  Policy", row.names = T, escape = F,format = "pandoc")
+kable(continous.df[,1:20],caption = paste("Continous Review Inventory  Policy item",item), row.names = T, escape = F,format = "pandoc")
 ```
 
 
@@ -1677,26 +1696,32 @@ kable(sq.summary,caption = "Continous Inventory SQ Policy",format = "pandoc")
 
 
 ```{r,echo=FALSE}
-item <- 15
+item <- 1
 par(family="serif", mar = c(4.25,4.25,.1,.1), bg ="white")
 {plot(continous.inventory(item)[3,], xlab="Time", type="l", lwd=2, ylab="demand", cex.lab = 1.5, cex.axis = 1.25)
-abline(h=product_data$Lot_size_q[item]%% product_data$deman_per_day_boxes[item], col="red", lwd=2)}
+abline(h=product_data$Lot_size_q[item]%% product_data$deman_per_day_boxes[item], col="red", lwd=2)
+title(main=paste("item ",item),outer = TRUE)}
 ```
 
-Reordering points of this policy is near zero
-### Cost of Policies
+The table above is Item 1 cycle
 
-* SQ Policy
+Reordering points of this policy is near zero
+
+* Cycle time in days  vs Order frequency m 
 
 ```{r}
-q.year.vec <- vector(mode ="double" ,length = 62)
+kable(round(cycle.time,2), format = "pandoc")
+```
 
-for(item in 1:62){
-  q.year.vec[item] <- sum(continous.inventory(item)[2,])/ product_data$cycle_time_in_days[item] #convert back to m 
-}
-
+Item 1 has M value of 24 meaning 59 days as cycle time in day, this means therefore, how many cycles in a year(262) meaning total of 4 cycles this can be seen from the diagram its also 4 cycles.
 
 
+
+cycle time 
+```{r}
+product_data$cycle_time_in_days[1]
+
+product_data$Order_frequency_M
 ```
 
 
@@ -1919,27 +1944,25 @@ kable(so.mat.df[1:5,1:6],caption = "Items and samples",format = "pandoc")
 
 ```
 
+* *Separate Ordering*
+
 
 
 ```{r,echo=FALSE}
-#JRP
-# lower cost
-#q.vec
-
-quant.no.const <- data.frame(rbind(round(q.vec )))
-colnames(quant.no.const) <- reo.id 
-rownames(quant.no.const) <- c("$q_i$")
-kable(quant.no.const[,1:10],"pandoc", row.names = T)
+#quant.no.const <- data.frame(rbind(round(q.vec )))
+#colnames(quant.no.const) <- reo.id 
+#rownames(quant.no.const) <- c("$q_i$")
+#kable(quant.no.const[,1:10],"pandoc", row.names = T)
 
 
-library(gtools)
-quant.no.const<-quant.no.const[mixedorder(colnames(quant.no.const))]
+#library(gtools)
+#quant.no.const<-quant.no.const[mixedorder(colnames(quant.no.const))]
 #quant.no.const
 # higher cost arranged
 #q.start
 
-length(which((quant.no.const > q.start)== TRUE))# 61
-which((quant.no.const < q.start)== TRUE)# only 57
+#length(which((quant.no.const > q.start)== TRUE))# 61
+#which((quant.no.const < q.start)== TRUE)# only 57
 
 #quant.no.const[57]
 
@@ -1953,50 +1976,53 @@ colnames(so.df)<-c("sum",c(1:62))
 kable(so.df[,1:8], row.names = T, escape = F,format = "pandoc")
 ```
 
+
+
+
 As seen from the table, with no constraint you tend to order far more than constrained. 
 
+* *JRP*
 
 ```{r,echo=FALSE}
-#SO
-so.cost.vec <- c(numeric(0),1:40)
-for (i in 1:40) {
-  so.cost.vec[i] <- obj.fun(so.mat[,i])
-}
-#so.cost.vec
-so.data.mat <- as.data.frame(so.mat)
+#JRP
+# lower cost
+#q.vec
+
+# looking for m values unconstrained Jo vs constrained JO.
+#unconstrained
+
+df<-df[mixedorder((colnames(df)))]
 
 
-{plot(x=so.mat[1,], round(so.cost.vec), xlab ="lot size q", ylab = "total cost", type = "p", lwd = 2)
-points(x=so.mat[2,], y=round(so.cost.vec), lwd=2, col="blue")
-points(x=so.mat[12,], y=round(so.cost.vec), lwd=2, col="red")}
-#JO
+unconst.m<- unlist(df[1,])
+unconst.m
 
-```
-Without considering capacity constraint, Using some examples for illustration,for all items using the EOQ model. for Items 1 and 2, EOQ is 97 and 108 respectively without paying extra 1500.  
+#constrained
 
-When ordering cost of 1500 and capacity for items 1 and 2 has order quantities of 19 and 20 respectively, thus costing far more as seen in the graph above. This is largely due to lack of capacity constraint because so little is ordered, that 1500 is paided all the time order takes place for each items. 
+const.m<- unlist(df2[1,])
 
-
-```{r,echo=FALSE}
-
-jrp.mat<- matrix(0,nrow = 62, ncol = 40)
-
+k<-0
 for (i in 1:62) {
-  
-  jrp.mat[i,]<-seq.int(unlist(quant.no.const[i]),unlist(q.start[i]),length.out = 40)
-
+  if(const.m[i]>=unconst.m[i]){
+    k<-k+1
+  }
 }
 
-jrp.m.mat <- matrix(0,nrow = 62, ncol = 40)
+print(k)
 
-m.mat<- data.frame(rbind(m.vec.int,df2[1,]))
-m.mat <-cbind(sum=c(sum(m.vec.int),sum(df2[1,])),m.mat)
-rownames(m.mat)<- c("No Constrained","Constrained")
-colnames(m.mat)<-c("sum",c(1:62))
 
-kable(m.mat[,1:8], row.names = T, escape = F,format = "pandoc")
 ```
-As seen above, with no capacity, you generally have smaller order frequencies across the 62 items which shows but larger order quantity with lower cost generally. 
 
-Since we have limited capacity, we will order frequently and therefore will not take advantage of cost savings we could have gotten if we have larger capacity.
+in JRP for basic cycle, 47 items has equal or more order frequency when capacitated compared to no capacity constrained. 
+
+```{r,echo=FALSE}
+mvals<- data.frame(rbind(unconst.m,const.m))
+mvals<-cbind(sum=c(sum(unconst.m),sum(const.m)), mvals)
+kable(mvals,format = "pandoc")
+```
+In JRP , sum of constrained and unconstrained values
+
+
+
+
 
