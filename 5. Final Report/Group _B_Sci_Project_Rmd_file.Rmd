@@ -3,13 +3,13 @@ title: "Synchronized lot sizing with capacity constraints"
 author: "GroupB"
 date: "14/08/2020"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
     number_sections: no
     toc: yes
     toc_float: yes
     code_folding: "hide"
-  pdf_document: default
   word_document:
     toc: yes
 always_allow_html: true
@@ -350,12 +350,14 @@ $$\frac{\big[\sum_{i=1}^n lane_i \cdot b_i \big]- rack_{{total}_{width}}} {rack_
 overflow.mm.lane.min<- sum(lane.min*product_data$b_sorting) - rack_total_width
 overflow.mm.lane.max<-sum(lane.max*product_data$b_sorting) - rack_total_width
 # relative overflow in %
+opt_cap_in_mm <- sum(lane.min*product_data$b_sorting)
+
 overflow.per.lane.min<-(sum(lane.min*product_data$b_sorting) - rack_total_width)/rack_total_width*100
 overflow.per.lane.max<- (sum(lane.max*product_data$b_sorting) - rack_total_width)/rack_total_width*100
+n0_same_cap_needed<- (sum(lane.max*product_data$b_sorting) - rack_total_width)/rack_total_width
+overflow<- data.frame(overflow.mm.lane.min,overflow.mm.lane.max,overflow.per.lane.min,overflow.per.lane.max,n0_same_cap_needed)
 
-overflow<- data.frame(overflow.mm.lane.min,overflow.mm.lane.max,overflow.per.lane.min,overflow.per.lane.max)
-
-colnames(overflow)<-c("mm_lane_min","mm_lane_max","% lane_min","% lane.max")
+colnames(overflow)<-c("mm_lane_min","mm_lane_max","%_lane_min","%_lane.max","n0_same_cap_needed")
 rownames(overflow)<- "Overflow"
 
 kable(overflow,caption = "Rack Capacity overflow in mm and percentage",format = "pandoc")
@@ -365,6 +367,8 @@ kable(overflow,caption = "Rack Capacity overflow in mm and percentage",format = 
 
 
 *As seen above*, the capacity is exceeded by lots of margin even without adding  overall ordering capacity $c^{-or}$ it still exceeds by $427\%$
+
+We need the original capacity * 22.9 to fulfill the optimum quantity.
 
 
 * *Introducing capacity constraint*
@@ -439,9 +443,17 @@ const.fun <- function(q, bns = product_data$b_not_sorting, bs = product_data$b_s
 #const.fun(product_data$eoq.min)
 # try to figure out a freasible starting solution
 #const.fun(product_data$eoq.min/10) -  rack_total_width
+```
 
+
+```{r}
 obj.const<- data.frame(rbind(c(obj.fun(product_data$eoq.max),const.fun(product_data$eoq.max)),c(obj.fun(product_data$eoq.min),const.fun(product_data$eoq.min) )))
 
+#obj.const
+```
+
+
+```{r}
 colnames(obj.const)<-c("Cost Function (€)", "Capacity in (mm)") 
 rownames(obj.const)<-c("Eoq Max","Eoq Min")
 
@@ -472,7 +484,7 @@ qopt <- OP(
 ```
 
 
-
+* Start is like where to begin for optimization.
 ```{r}
 copt_sol <- ROI_solve(qopt, start = rep(min(product_data$eoq.max)/10,n), solver = "alabama" )
 # always check whether the algorithm converged
@@ -653,6 +665,7 @@ c.or0 <- cord
 c.or <- product_data$ordering_cost
 #H.vec <- 0.5 * dei * c.sh
 # based on the previous definition, I think this should be the vector of holding cost multipliers
+#holding cost rate is 10% of price of item, in this case box
 H.vec <- 0.1 * product_data$box_cost * dei * 0.5
 ```
 
@@ -1013,6 +1026,12 @@ kable(as.data.frame(patterns) ,caption = "Total of 9 patterns ", row.names = T,f
 ```
 
 
+```{r}
+a_ip<-t(patterns)
+a_ip
+```
+
+
 Let $p_{k,j}$ indicate the number of lanes of type $j$ associated to pattern $k$. Now we need to assess the number of lanes per required of each type. As outlined above, we know the number of lanes per product $l(q_i)$, thus we can deduce the demand for lane type $j$ ($ld_j$) by summing up the $l(q_i)$  for each lane type,  i.e., $ld_j = \sum_{i \in P|b_i=j} l(q_i)$:
 
 ```{r}
@@ -1095,11 +1114,90 @@ kable(as.data.frame(ld),format = "pandoc",caption = "Number of lanes for 200, 40
 
 
 
+## 1D Cutting stock problem
+
+*Sets:*
+
+$P:$ Set of cutting patterns {1,2,...,9} for the patterns
+
+$I:$ Set of box sorting lane width {1,2,3} with 1=200, 2=400, 3=600
+
+**Parameters:**
+
+$d_i$ number of lanes demanded for each box sorting lane width.
+```{r}
+paste0(c(200,400,600),"=",ld)
+```
+
+
+$a_{i,p}$ number of lanes of box sorting lane width $i$ within pattern $p$
+```{r}
+a_ip
+```
+
+
+
+$$ (OF) \min_x x_0= \sum_{p=1}^9 x_p$$
+
+
+$s.t.$
+
+$$ \sum_{p=1}^9 a_{i,p}\cdot x_0\ge d_i  \qquad \forall i \in I $$
+
+
+$$x_p \in \mathbb N \qquad \forall p \in P $$
+```{r}
+library(ompr)
+library(dplyr)
+library(ompr.roi)
+library(ROI.plugin.glpk)
+```
+
+
+```{r}
+model<-MIPModel() %>%
+  add_variable(x[p],p=1:9,type="integer",lb=0,ub=32)%>%
+  set_objective(sum_expr(x[p],p=1:9),"min")%>%
+  add_constraint(sum_expr(a_ip[i,p]*x[p],p=1:9)>=ld[i],i=1:3)
+
+```
+
+
+```{r}
+result <- solve_model(model,with_ROI(solver = "glpk",verbose=TRUE))
+```
+
+```{r}
+solution <- get_solution(result, x[p])%>%
+  filter(value>0)
+
+```
+
+
+```{r}
+solution
+```
+patterns 3 and 4 where selected
+
+
+```{r}
+opt_patterns<-as.data.frame(rbind(a_ip[,solution$p[1]],a_ip[,solution$p[2]]), colnames(c("200","400","600")))
+opt_patterns
+```
+
+
+```{r}
+
+paste("Total of",result$objective_value,"rack_levels")
+```
+
+## ######################################################################################
+
 
 * *Changes made for lane assignment*
 
 
-1. rack_total_width which was  56,000 mm, looking at the 9 patterns all of which have 150 mm in waste, meaning  all 32 levels will have 150 mm waste each. Therefor $56,000 - (150 *32) = 51,200$ thereby changing rack total width 51,200.
+1. rack_total_width which was  56,000 mm, looking at the 9 patterns all of which have 150 mm in waste, meaning  all 32 levels will have 150 mm waste each. Therefore $56,000 - (150 *32) = 51,200$ thereby changing rack total width 51,200.
 
 2. These changes then affects the values of q  for all the 62 items involved.
 
@@ -1108,10 +1206,10 @@ kable(as.data.frame(ld),format = "pandoc",caption = "Number of lanes for 200, 40
 
 
 ```{r}
-pat<-data.frame(patterns[3:4,]) 
-colnames(pat)<-c("200","400","600")
+#pat<-data.frame(patterns[3:4,]) 
+#colnames(pat)<-c("200","400","600")
 
-kable(pat,caption = "Patterns needed", row.names = T, escape = F,format = "pandoc")
+#kable(pat,caption = "Patterns needed", row.names = T, escape = F,format = "pandoc")
 ```
 
 
@@ -1121,7 +1219,7 @@ kable(pat,caption = "Patterns needed", row.names = T, escape = F,format = "pando
 
 ```{r}
 
-fitted.pattern <- patterns[3:4,]
+fitted.pattern <- opt_patterns#patterns[3:4,]
 # loop through 32 levels to assign patterns
 
 levels.pattern.mat <- matrix(0,  nrow = 33,ncol = 3)
@@ -1129,7 +1227,7 @@ levels.pattern.mat <- matrix(0,  nrow = 33,ncol = 3)
 for (i in 1:32) {
   for (j in 1:3) {
     
-  if(i<= 16){
+  if(i<= 25){
     levels.pattern.mat[i,j] <- t(fitted.pattern[1,j])
   } else {
      levels.pattern.mat[i,j] <- t(fitted.pattern[2,j])
